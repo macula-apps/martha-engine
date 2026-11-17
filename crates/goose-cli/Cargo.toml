@@ -24,6 +24,7 @@ name = "mcp_conformance_driver"
 path = "src/bin/mcp_conformance_driver.rs"
 
 [dependencies]
+martha-engine-name = { path = "../martha-engine-name" }
 clap_mangen = { version = "0.3", default-features = false }
 goose = { path = "../goose", default-features = false }
 agent-client-protocol = { workspace = true, features = ["unstable"], optional = true }

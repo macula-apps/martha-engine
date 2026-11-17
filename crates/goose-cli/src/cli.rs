@@ -76,7 +76,14 @@ impl From<ServePlatform> for GoosePlatform {
 }
 
 #[derive(Parser)]
-#[command(name = "goose", author, version, display_name = "", about, long_about = None)]
+#[command(
+    name = martha_engine_name::ENGINE_NAME,
+    author,
+    version = concat!(env!("CARGO_PKG_VERSION"), " (built on Goose)"),
+    display_name = martha_engine_name::ENGINE_NAME,
+    about,
+    long_about = None
+)]
 pub struct Cli {
     #[command(subcommand)]
     command: Option<Command>,

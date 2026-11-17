@@ -4191,6 +4191,7 @@ dependencies = [
  "goose-roaming",
  "indicatif",
  "libc",
+ "martha-engine-name",
  "open",
  "qrcode",
  "rand 0.10.3",
