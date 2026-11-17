@@ -1886,7 +1886,7 @@ mod tests {
 }
 
 async fn hf_client() -> Result<HFClient> {
-    let mut builder = HFClient::builder().user_agent("goose-ai-agent");
+    let mut builder = HFClient::builder().user_agent(martha_engine_name::ENGINE_NAME);
     if let Some(token) = optional_hf_token(huggingface_auth::resolve_token_async()).await {
         builder = builder.token(token);
     }

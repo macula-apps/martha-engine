@@ -12,7 +12,7 @@ description.workspace = true
 workspace = true
 
 [[bin]]
-name = "goose"
+name = "martha-engine"
 path = "src/main.rs"
 
 [[bin]]
@@ -24,6 +24,7 @@ name = "mcp_conformance_driver"
 path = "src/bin/mcp_conformance_driver.rs"
 
 [dependencies]
+martha-engine-name = { path = "../martha-engine-name" }
 clap_mangen = { version = "0.3", default-features = false }
 goose = { path = "../goose", default-features = false }
 agent-client-protocol = { workspace = true, features = ["unstable"], optional = true }
@@ -96,12 +97,10 @@ default = [
     "tree-sitter",
     "local-inference",
     "aws-providers",
-    "telemetry",
     "otel",
     "rustls-tls",
     "live-voice",
     "system-keyring",
-    "update",
     "bundled-mcp",
     "scheduler",
     "platform-apps",
@@ -133,7 +132,6 @@ portable-default = [
     "tree-sitter",
     "live-voice",
     "aws-providers",
-    "telemetry",
     "otel",
     "bundled-mcp",
     "scheduler",

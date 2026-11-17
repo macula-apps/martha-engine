@@ -19,6 +19,7 @@ use crate::agents::state_machine::{
     Emitter, GooseEffect, Operation, OperationResult,
 };
 use crate::agents::tool_snapshot::ToolSnapshot;
+use crate::agents::StateMachineServices;
 use crate::conversation::message::Message;
 use crate::conversation::Conversation;
 use crate::session::Session;
@@ -27,6 +28,7 @@ use crate::slash_commands::skill_slash_command::{format_installed_skills, runnab
 pub(super) const LOAD_SKILL_TOOL_NAME: &str = "load_skill";
 
 pub struct SkillOperation {
+    services: Arc<StateMachineServices>,
     tool_snapshot: Arc<StdMutex<Option<Arc<ToolSnapshot>>>>,
 }
 
@@ -199,8 +201,22 @@ fn load_supporting_file(
 }
 
 impl SkillOperation {
-    pub fn new(tool_snapshot: Arc<StdMutex<Option<Arc<ToolSnapshot>>>>) -> Self {
-        Self { tool_snapshot }
+    pub fn new(
+        services: Arc<StateMachineServices>,
+        tool_snapshot: Arc<StdMutex<Option<Arc<ToolSnapshot>>>>,
+    ) -> Self {
+        Self {
+            services,
+            tool_snapshot,
+        }
+    }
+
+    /// Skills are a platform extension like any other, so the session's
+    /// selection decides whether this operation has anything to offer.
+    async fn extension_is_enabled(&self, session: &Session) -> Result<bool> {
+        let tools =
+            ToolSnapshot::for_session(&self.tool_snapshot, &self.services, &session.id).await?;
+        Ok(tools.is_enabled(crate::skills::EXTENSION_NAME))
     }
 
     fn leased_session(&self, session: &Session) -> Option<Session> {
@@ -319,7 +335,10 @@ impl Operation<Session, GooseEffect> for SkillOperation {
         Ok(commands)
     }
 
-    async fn inference_tools(&self, _session: &Session) -> Result<Vec<Tool>> {
+    async fn inference_tools(&self, session: &Session) -> Result<Vec<Tool>> {
+        if !self.extension_is_enabled(session).await? {
+            return Ok(Vec::new());
+        }
         Ok(vec![skill_tool()?])
     }
 
@@ -328,6 +347,9 @@ impl Operation<Session, GooseEffect> for SkillOperation {
         session: &Session,
         _conversation: &Conversation,
     ) -> Result<Vec<(String, String)>> {
+        if !self.extension_is_enabled(session).await? {
+            return Ok(Vec::new());
+        }
         Ok(skill_instructions(&session.working_dir)
             .map(|instructions| ("skills".to_string(), instructions))
             .into_iter()

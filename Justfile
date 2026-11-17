@@ -23,7 +23,7 @@ test-buzz:
 # Default release command
 release-binary:
     @echo "Building release version..."
-    cargo build --release -p goose-cli --bin goose
+    cargo build --release -p goose-cli --bin martha-engine
     @just copy-binary
 
 # Build Windows executable on a Windows host
@@ -149,7 +149,7 @@ run-docs:
 # Run server
 run-server:
     @echo "Running external ACP backend..."
-    GOOSE_SERVER__SECRET_KEY="${GOOSE_SERVER__SECRET_KEY:-test}" cargo run -p goose-cli --bin goose -- serve --platform desktop --enable-scheduler --host 127.0.0.1 --port 3000
+    GOOSE_SERVER__SECRET_KEY="${GOOSE_SERVER__SECRET_KEY:-test}" cargo run -p goose-cli --bin martha-engine -- serve --platform desktop --enable-scheduler --host 127.0.0.1 --port 3000
 
 # Check if checked-in ACP artifacts are up-to-date and the docs can be rendered
 check-acp-artifacts: generate-acp-types generate-acp-docs
@@ -466,7 +466,7 @@ win-total-rls *allparam:
 
 # Build the binaries the MCP conformance driver needs.
 mcp-conformance-build:
-  cargo build -p goose-cli --bin goose --bin mcp_conformance_driver
+  cargo build -p goose-cli --bin martha-engine --bin mcp_conformance_driver
 
 # suite: all, core, extensions, backcompat, auth, metadata, draft, sep-835
 # build: "false" reuses the existing target/debug binaries instead of rebuilding
@@ -489,7 +489,7 @@ mcp-conformance version="2025-11-25" suite="all" conformance_version="0.2.0-alph
   if [ -n "{{baseline}}" ]; then
     baseline_args=(--expected-failures "{{baseline}}")
   fi
-  export GOOSE_BIN="$PWD/target/debug/goose"
+  export GOOSE_BIN="$PWD/target/debug/martha-engine"
   GOOSE_DISABLE_KEYRING=1 npx -y @modelcontextprotocol/conformance@{{conformance_version}} client --command "$PWD/target/debug/mcp_conformance_driver" --spec-version "{{version}}" --suite "{{suite}}" ${baseline_args[@]+"${baseline_args[@]}"}
 
 build-test-tools:

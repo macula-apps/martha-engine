@@ -23,6 +23,7 @@ tutorial-server = ["dep:include_dir"]
 bundled-mcp = ["autovisualiser", "computer-controller", "document-tools", "memory-server", "tutorial-server"]
 
 [dependencies]
+martha-engine-name = { path = "../martha-engine-name" }
 rmcp = { workspace = true, features = ["server", "client", "transport-io", "macros"] }
 anyhow = { workspace = true }
 tokio = { workspace = true, features = ["process", "io-util"] }

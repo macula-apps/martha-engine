@@ -131,7 +131,10 @@ pub(crate) fn build_state_machine(
             ToolApprovalOperation::new(Arc::new(GooseToolApproval::new(tool_inspection_manager)))
                 .with_declined_message(DECLINED_RESPONSE),
         ),
-        Arc::new(SkillOperation::new(Arc::clone(&tool_snapshot))),
+        Arc::new(SkillOperation::new(
+            Arc::clone(&services),
+            Arc::clone(&tool_snapshot),
+        )),
         Arc::new(RecipeOperation::new(Arc::clone(&services))),
         Arc::new(PlatformExtensionOperation::new(
             Arc::clone(&services),

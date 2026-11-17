@@ -128,11 +128,11 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 if [[ -z "${SKIP_BUILD:-}" && -z "${GOOSE_BIN:-}" ]]; then
   echo "Building goose..."
-  (cd "$REPO_ROOT" && cargo build -p goose-cli --features local-inference --bin goose)
+  (cd "$REPO_ROOT" && cargo build -p goose-cli --features local-inference --bin martha-engine)
   echo ""
 fi
 
-GOOSE_BIN="${GOOSE_BIN:-$REPO_ROOT/target/debug/goose}"
+GOOSE_BIN="${GOOSE_BIN:-$REPO_ROOT/target/debug/martha-engine}"
 if [[ ! -x "$GOOSE_BIN" ]]; then
   echo "Error: goose binary not found or not executable: $GOOSE_BIN"
   exit 1

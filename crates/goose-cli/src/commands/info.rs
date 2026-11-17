@@ -125,7 +125,12 @@ pub async fn handle_info(verbose: bool, check: bool) -> Result<()> {
         .unwrap_or(0)
         + 4;
 
-    println!("{}", style("goose Version:").cyan().bold());
+    println!(
+        "{}",
+        style(concat!(martha_engine_name::engine_name!(), " Version:"))
+            .cyan()
+            .bold()
+    );
     print_aligned("Version:", env!("CARGO_PKG_VERSION"), label_padding);
     println!();
 

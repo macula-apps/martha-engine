@@ -228,14 +228,14 @@ fn user_settings_path() -> Option<PathBuf> {
         return Some(
             path_root
                 .join(".config")
-                .join("goose")
+                .join(martha_engine_name::ENGINE_NAME)
                 .join("settings.json"),
         );
     }
     Some(
         dirs::home_dir()?
             .join(".config")
-            .join("goose")
+            .join(martha_engine_name::ENGINE_NAME)
             .join("settings.json"),
     )
 }

@@ -90,7 +90,6 @@ portable-default = [
     "tree-sitter",
     "live-voice",
     "aws-providers",
-    "telemetry",
     "otel",
     "scheduler",
     "platform-apps",
@@ -106,6 +105,7 @@ acp-http = ["dep:agent-client-protocol-http"]
 workspace = true
 
 [dependencies]
+martha-engine-name = { path = "../martha-engine-name" }
 lru = { workspace = true }
 rmcp = { workspace = true, features = [
     "auth",

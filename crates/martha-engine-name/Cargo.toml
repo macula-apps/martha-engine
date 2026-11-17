@@ -1,0 +1,15 @@
+[package]
+name = "martha-engine-name"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "The fork's name for its engine, defined once"
+publish = false
+
+[lints]
+workspace = true
+
+[dependencies]
