@@ -101,7 +101,6 @@ default = [
     "rustls-tls",
     "live-voice",
     "system-keyring",
-    "update",
     "bundled-mcp",
     "scheduler",
     "platform-apps",
