@@ -10,6 +10,7 @@ use crate::config::GooseMode;
 use crate::conversation::message::{Message, MessageContent};
 use crate::permission::Permission;
 use goose_agent::skills::LOAD_SKILL_TOOL_NAME;
+use goose_sdk_types::custom_requests::SourceType;
 
 fn advertised_tool_names(message: &Message) -> Option<&Vec<serde_json::Value>> {
     message
@@ -306,5 +307,60 @@ fn the_skills_switch_reads_goose_skills_advertised_from_config() -> Result<()> {
         !crate::agents::services::skills_advertised(&config),
         "GOOSE_SKILLS_ADVERTISED: false must switch skills off"
     );
+    Ok(())
+}
+
+/// The descriptions of the skills compiled into the binary (`goose-doc-guide`,
+/// `web-search`). They never pass through directory discovery, so the switch
+/// must reach them where the prompt is assembled, not where roots are scanned.
+fn built_in_skill_descriptions() -> Vec<String> {
+    let descriptions: Vec<String> = crate::skills::discover_skills(None)
+        .into_iter()
+        .filter(|skill| skill.source_type == SourceType::BuiltinSkill)
+        .map(|skill| skill.description)
+        .collect();
+    assert!(
+        !descriptions.is_empty(),
+        "the binary must carry built-in skills, or the tests below check nothing"
+    );
+    descriptions
+}
+
+/// Unset, the built-in skills reach the model like any other.
+#[tokio::test]
+async fn built_in_skills_are_offered_to_the_model_by_default() -> Result<()> {
+    let (pipeline, api) = test_pipeline().await?;
+    api.on("hello").reply("hi");
+
+    pipeline.run(["hello"]).await?;
+
+    for description in built_in_skill_descriptions() {
+        assert!(
+            api.calls()[0].system_contains(&description),
+            "skills are on, so the built-in skill \"{description}\" must be listed"
+        );
+    }
+    Ok(())
+}
+
+/// Switched off, the built-in skills are hidden too, not only the installed ones.
+#[tokio::test]
+async fn built_in_skills_switched_off_are_not_offered_to_the_model() -> Result<()> {
+    let (pipeline, api) = test_pipeline().await?;
+    let pipeline = pipeline.with_skills_advertised(false);
+    api.on("hello").reply("hi");
+
+    pipeline.run(["hello"]).await?;
+
+    assert!(
+        !api.calls()[0].advertises_tool(LOAD_SKILL_TOOL_NAME),
+        "skills are switched off, so {LOAD_SKILL_TOOL_NAME} must not be advertised"
+    );
+    for description in built_in_skill_descriptions() {
+        assert!(
+            !api.calls()[0].system_contains(&description),
+            "skills are switched off, so the built-in skill \"{description}\" must not be listed"
+        );
+    }
     Ok(())
 }
