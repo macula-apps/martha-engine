@@ -1,0 +1,135 @@
+# Keeps the fork on upstream's releases (macula-io/martha#547 S2). Daily, or on demand for one tag, it merges the
+# newest upstream release tag into a branch sync/<tag> made from main (a merge, never a rebase or a force-push), runs
+# upstream's own CI and the fork's checks on that branch, and only when both pass opens a pull request into main.
+# Main moves only when that pull request lands. A conflict or a red check stops here, on the branch, naming the patch.
+name: martha-engine sync
+
+on:
+  schedule:
+    - cron: '23 4 * * *'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: An upstream release tag, like v1.59.2; empty takes the newest
+        required: false
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: martha-engine-sync
+
+# bash with pipefail: a script piped into tee fails the step when the script fails.
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  merge:
+    name: Merge the upstream tag into its sync branch
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    outputs:
+      tag: ${{ steps.pick.outputs.tag }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+          filter: blob:none
+
+      - id: pick
+        env:
+          ASKED: ${{ inputs.tag }}
+        run: martha/sync/pick_the_upstream_tag.sh "$ASKED" >> "$GITHUB_OUTPUT"
+
+      - name: Merge
+        if: steps.pick.outputs.tag != ''
+        env:
+          TAG: ${{ steps.pick.outputs.tag }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          martha/sync/merge_the_upstream_tag.sh "$TAG" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Push the sync branch, merged or left at main for a person
+        if: ${{ !cancelled() && steps.pick.outputs.tag != '' }}
+        env:
+          TAG: ${{ steps.pick.outputs.tag }}
+        run: git push origin "HEAD:refs/heads/sync/$TAG"
+
+  checks:
+    needs: merge
+    if: needs.merge.outputs.tag != ''
+    permissions:
+      contents: read
+    uses: ./.github/workflows/martha-engine-checks.yml
+    with:
+      ref: sync/${{ needs.merge.outputs.tag }}
+
+  upstream-ci:
+    name: Run upstream's CI on the sync branch
+    needs: merge
+    if: needs.merge.outputs.tag != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      actions: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      BRANCH: sync/${{ needs.merge.outputs.tag }}
+    steps:
+      - run: |
+          gh workflow run ci.yml --ref "$BRANCH"
+          for _ in $(seq 30); do
+            run="$(gh run list --workflow ci.yml --branch "$BRANCH" --event workflow_dispatch --limit 1 --json databaseId --jq '.[0].databaseId // empty')"
+            [ -n "$run" ] && break
+            sleep 10
+          done
+          [ -n "$run" ] || { echo "::error::upstream's CI did not start on $BRANCH"; exit 1; }
+          echo "upstream CI on $BRANCH: run $run" >> "$GITHUB_STEP_SUMMARY"
+          gh run watch "$run" --exit-status --interval 60 > /dev/null
+
+  name-the-patch:
+    name: Name the patch behind a red check
+    needs: [merge, checks, upstream-ci]
+    if: failure() && needs.merge.result == 'success' && needs.merge.outputs.tag != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    env:
+      TAG: ${{ needs.merge.outputs.tag }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: sync/${{ needs.merge.outputs.tag }}
+          fetch-depth: 0
+          filter: blob:none
+          persist-credentials: false
+      - run: |
+          source martha/sync/pins.env
+          git fetch --quiet --no-tags "$UPSTREAM_URL" "+refs/tags/$TAG:refs/tags/$TAG"
+          echo "A check is red on sync/$TAG. Among the files the merge of $TAG changed:" >> "$GITHUB_STEP_SUMMARY"
+          mapfile -t changed < <(git diff --name-only HEAD^1 HEAD)
+          martha/sync/name_the_patch.sh "$TAG" "${changed[@]}" | tee -a "$GITHUB_STEP_SUMMARY"
+
+  pull-request:
+    name: Open the pull request into main
+    needs: [merge, checks, upstream-ci]
+    if: needs.merge.outputs.tag != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      TAG: ${{ needs.merge.outputs.tag }}
+    steps:
+      - run: |
+          gh pr create --base main --head "sync/$TAG" --title "Sync upstream $TAG" \
+            --body "Merges upstream $TAG into the fork. Upstream's CI and the fork's checks passed on this branch (run $GITHUB_RUN_ID); its summary names any workflow this merge adds, to turn off before this lands. Main moves only when this lands."
