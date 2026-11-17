@@ -18,9 +18,10 @@
 
 ---
 
-martha-engine is the agent engine that ships with standalone
-[Martha](https://github.com/macula-io/martha). This repository holds the
-engine; Martha itself lives in [macula-io/martha](https://github.com/macula-io/martha).
+martha-engine is the agent engine for standalone
+[Martha](https://github.com/macula-io/martha), which is being built. This
+repository holds the engine; Martha itself lives in
+[macula-io/martha](https://github.com/macula-io/martha).
 
 ## What is Martha?
 
@@ -49,14 +50,15 @@ Start solo and move to team without changing tools.
 martha-engine is built on [Goose](https://github.com/aaif-goose/goose)
 (Apache-2.0). It is not Goose, and it is not endorsed by the Goose project or
 its maintainers. Every change the fork makes is listed in [NOTICE](NOTICE),
-one commit each on top of an upstream Goose release. For what the agent
-itself can do (providers, extensions, recipes), read
+one commit each. The fork follows Goose's main branch, not its releases; a
+daily sync from it is being set up. For what the agent itself can do
+(providers, extensions, recipes), read
 [Goose's documentation](https://goose-docs.ai).
 
 ## Install
 
-The engine ships inside standalone Martha and is installed and updated only
-through `martha` (`martha update`); there is no separate install.
+Standalone Martha, which will install and update the engine, is being built.
+Until then the engine is not a separately installable product.
 
 ## Why "Martha"?
 
