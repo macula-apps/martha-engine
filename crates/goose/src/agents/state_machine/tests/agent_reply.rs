@@ -151,6 +151,22 @@ async fn enable_developer(services: &Arc<StateMachineServices>, session_id: &str
     Ok(())
 }
 
+async fn enable_skills(services: &Arc<StateMachineServices>, session_id: &str) -> Result<()> {
+    services
+        .enable_extension(
+            session_id,
+            ExtensionConfig::Platform {
+                name: crate::skills::EXTENSION_NAME.to_string(),
+                description: "Skills".to_string(),
+                display_name: Some("Skills".to_string()),
+                bundled: None,
+                available_tools: Vec::new(),
+            },
+        )
+        .await?;
+    Ok(())
+}
+
 fn install_skill(working_dir: &std::path::Path, content: &str) -> Result<()> {
     let skill_dir = working_dir.join(".agents/skills/review");
     std::fs::create_dir_all(&skill_dir)?;
@@ -522,6 +538,7 @@ async fn pre_tool_use_reports_the_advertised_working_dir_after_a_mid_run_change(
 async fn state_machine_skill_approval_uses_its_advertised_working_dir() -> Result<()> {
     let (services, api, session_id, old_working_dir) = agent_with_dummy_api().await?;
     install_skill(old_working_dir.path(), "OLD_SKILL_CONTENT")?;
+    enable_skills(&services, &session_id).await?;
     services
         .update_goose_mode(GooseMode::Approve, &session_id)
         .await?;
@@ -585,6 +602,7 @@ async fn state_machine_skill_approval_uses_its_advertised_working_dir() -> Resul
 async fn state_machine_rejects_resumed_skill_approval_without_its_lease() -> Result<()> {
     let (services, api, session_id, working_dir) = agent_with_dummy_api().await?;
     install_skill(working_dir.path(), "SKILL_MUST_NOT_LOAD")?;
+    enable_skills(&services, &session_id).await?;
     services
         .update_goose_mode(GooseMode::Approve, &session_id)
         .await?;

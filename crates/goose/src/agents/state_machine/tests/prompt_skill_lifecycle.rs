@@ -15,6 +15,9 @@ use crate::conversation::message::MessageContent;
 #[tokio::test]
 async fn prompt_and_skill_lifecycle() -> Result<()> {
     let (pipeline, api) = test_pipeline().await?;
+    pipeline
+        .add_extension(crate::skills::EXTENSION_NAME)
+        .await?;
     std::fs::write(
         pipeline.working_dir().join("AGENTS.md"),
         "ROOT_PROJECT_INSTRUCTION",
