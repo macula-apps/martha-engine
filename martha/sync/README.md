@@ -57,9 +57,11 @@ and then runs the checks below. A job beside it fails while any workflow other t
 | The trial lines (`run_the_trial_lines.sh`) | Lines 1-9 of the #541 trial pass on this engine, run by Martha's own driver at the pinned `MARTHA_SHA` against the pinned local model (`serve_the_trial_model.sh`) | S2 |
 | No capture traffic (`watch_for_the_capture_host.sh`) | While the trial lines run, the runner never looks up PostHog's capture host. The host is read from `crates/goose/src/posthog.rs`. A control lookup must appear in the recording, so a recording that saw nothing fails | S2 |
 
-Each trial line is one launch, stopped at the owner's ten minutes (`TRIAL_MINUTES_PER_LAUNCH`). Every line launches
-once, inside the two launches a check may use. Each line's `result.json` and strace are kept as the run's
-`trial-evidence` artifact for 14 days.
+Each trial launch is stopped at the owner's ten minutes (`TRIAL_MINUTES_PER_LAUNCH`). A line launches once; it
+launches a second time only when the first observed nothing (`not-observed`: the small model made no call the line
+needs, as line 5 did on the first hosted run), and never more than the two launches a check may use
+(`TRIAL_LAUNCHES_PER_LINE`). A `fail` is never launched again. Each launch's `result.json` and strace are kept as the
+run's `trial-evidence` artifact for 14 days; an earlier launch of a line is under `line-<n>-launch-<k>`.
 
 Every pinned value (upstream, the Martha commit, the fork's workflows, the Ollama build and its checksum, the model and
 its digest) is in `pins.env`, and only there. The Node line is the one Martha's own CI runs on, read from its
@@ -75,10 +77,10 @@ measurements on a 4-core box with no GPU, like a hosted runner:
 |---|---|---|
 | A daily run with nothing to sync | about 1 | a partial clone and two `git ls-remote` calls |
 | Merge | about 2 | a partial clone of the fork (`filter: blob:none`), upstream's main fetched |
-| The fork's checks | about 25 | a cold build took 3 min 55 s on that 4-core box (the fork's main at upstream `3da5adff4`, before S1, so `--bin goose`; the same crates), so allow 8-10 on a runner; Ollama and the 3 GB model, 2-3; the nine trial lines, 8 min 22 s in the #541 record; S1's checks, about 2 |
+| The fork's checks | about 30, plus up to 10 for each line launched a second time | the first hosted run (pull request 1, 2026-11-17): 30 minutes from start to finish, of which the build about 4, Ollama and the 3 GB model about 2, the nine trial lines 24 |
 | Upstream's CI | about 117, plus about 18 for the job waiting on it | the fork's own dispatched run of `ci.yml` (2026-11-17): 26 jobs, 17 minutes from start to finish |
 | Opening the pull request | under 1 | |
-| **One sync with something to merge** | **about 160, about 45 minutes from start to finish** | |
+| **One sync with something to merge** | **about 165, about 50 minutes from start to finish** | |
 
 ## Workflows on the fork
 
