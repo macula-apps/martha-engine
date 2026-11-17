@@ -1,5 +1,7 @@
 # syntax=docker/dockerfile:1.4
-# goose CLI and Server Docker Image
+# martha-engine CLI and Server Docker Image (a modified goose; see NOTICE)
+# The engine's name, once: it must equal crates/martha-engine-name's ENGINE_NAME.
+ARG ENGINE_NAME=martha-engine
 # Multi-stage build for minimal final image size
 
 # Build stage
@@ -36,6 +38,8 @@ RUN cargo build --release --package goose-cli
 # Runtime stage - minimal Debian
 FROM debian:bookworm-slim@sha256:b1a741487078b369e78119849663d7f1a5341ef2768798f7b7406c4240f86aef
 
+ARG ENGINE_NAME
+
 # Install only runtime dependencies
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -50,27 +54,28 @@ RUN apt-get update && \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy binary from builder
-COPY --from=builder /build/target/release/martha-engine /usr/local/bin/goose
+COPY --from=builder /build/target/release/${ENGINE_NAME} /usr/local/bin/${ENGINE_NAME}
 
 # Create non-root user
-RUN useradd -m -u 1000 -s /bin/bash goose && \
-    mkdir -p /home/goose/.config/goose && \
-    chown -R goose:goose /home/goose
+RUN useradd -m -u 1000 -s /bin/bash engine && \
+    mkdir -p /home/engine/.config/${ENGINE_NAME} && \
+    chown -R engine:engine /home/engine
 
 # Set up environment
 ENV PATH="/usr/local/bin:${PATH}"
-ENV HOME="/home/goose"
+ENV HOME="/home/engine"
+ENV ENGINE_BIN="/usr/local/bin/${ENGINE_NAME}"
 
 # Switch to non-root user
-USER goose
-WORKDIR /home/goose
+USER engine
+WORKDIR /home/engine
 
-# Default to goose CLI
-ENTRYPOINT ["/usr/local/bin/goose"]
+# Default to the engine CLI (shell form so the name is not restated; exec keeps it PID 1)
+ENTRYPOINT ["/bin/sh", "-c", "exec \"$ENGINE_BIN\" \"$@\"", "--"]
 CMD ["--help"]
 
 # Labels for metadata
-LABEL org.opencontainers.image.title="goose"
-LABEL org.opencontainers.image.description="goose CLI"
-LABEL org.opencontainers.image.vendor="AAIF"
-LABEL org.opencontainers.image.source="https://github.com/aaif-goose/goose"
+LABEL org.opencontainers.image.title="${ENGINE_NAME}"
+LABEL org.opencontainers.image.description="${ENGINE_NAME} CLI, a modified goose (see NOTICE)"
+LABEL org.opencontainers.image.vendor="Macula"
+LABEL org.opencontainers.image.source="https://github.com/macula-apps/martha-engine"
