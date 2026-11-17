@@ -1,4 +1,4 @@
-use etcetera::{choose_app_strategy, AppStrategy, AppStrategyArgs};
+use etcetera::{choose_app_strategy, AppStrategy};
 use std::ffi::OsString;
 use std::path::PathBuf;
 
@@ -16,15 +16,12 @@ impl Paths {
                 DirType::AgentsHome => base.join(".agents"),
             }
         } else {
-            // NOTE: "Block" is kept here for backwards compatibility with existing
-            // user config/data directories (e.g. ~/Library/Application Support/Block/goose/).
-            // Changing this would orphan existing installations.
-            let strategy = choose_app_strategy(AppStrategyArgs {
-                top_level_domain: "Block".to_string(),
-                author: "Block".to_string(),
-                app_name: "goose".to_string(),
-            })
-            .expect("goose requires a home dir");
+            // The fork's own folders, so a standalone install never reads or
+            // writes a separate goose install's folders.
+            let strategy =
+                choose_app_strategy(martha_engine_name::engine_app_strategy_args!()).expect(
+                    concat!(martha_engine_name::engine_name!(), " requires a home dir"),
+                );
 
             match dir_type {
                 DirType::Config => strategy.config_dir(),

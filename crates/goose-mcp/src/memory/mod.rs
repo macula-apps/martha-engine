@@ -121,18 +121,26 @@ impl MemoryServer {
 
              Storage:
              - Local: .goose/memory/ (project-specific)
-             - Global: ~/.config/goose/memory/ (user-wide)
+             - Global: ~/.config/{engine}/memory/ (user-wide)
 
              Save proactively when users share preferences, project configurations, workflow patterns,
              or recurring commands. Always confirm with the user before saving. Suggest relevant
              categories and tags, and clarify storage scope (local vs global).
 
              Use category "*" with retrieve_memories or remove_memory_category to access all entries.
-            "#};
+            "#,
+            engine = martha_engine_name::ENGINE_NAME,
+        };
 
         let global_memory_dir = choose_app_strategy(crate::APP_STRATEGY.clone())
             .map(|strategy| strategy.in_config_dir("memory"))
-            .unwrap_or_else(|_| PathBuf::from(".config/goose/memory"));
+            .unwrap_or_else(|_| {
+                PathBuf::from(concat!(
+                    ".config/",
+                    martha_engine_name::engine_name!(),
+                    "/memory"
+                ))
+            });
 
         let mut memory_router = Self {
             tool_router: Self::tool_router(),

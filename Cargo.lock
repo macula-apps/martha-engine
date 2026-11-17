@@ -4042,6 +4042,7 @@ dependencies = [
  "keyring",
  "libc",
  "lru 0.19.0",
+ "martha-engine-name",
  "minijinja",
  "mockall",
  "nanoid",
@@ -4269,6 +4270,7 @@ dependencies = [
  "include_dir",
  "llama-cpp-2",
  "llama-cpp-sys-2",
+ "martha-engine-name",
  "minijinja",
  "pulldown-cmark",
  "regex",
@@ -4296,6 +4298,7 @@ dependencies = [
  "include_dir",
  "indoc",
  "lopdf",
+ "martha-engine-name",
  "once_cell",
  "process-wrap 9.1.0",
  "rmcp",
@@ -5873,6 +5876,10 @@ name = "macro_rules_attribute-proc_macro"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fc04a4c58212d57930a24bf47d3fa87485264a3a054e9c10e042eb373573ad3c"
+
+[[package]]
+name = "martha-engine-name"
+version = "1.59.0"
 
 [[package]]
 name = "matchers"

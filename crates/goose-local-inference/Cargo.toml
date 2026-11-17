@@ -24,6 +24,7 @@ hf-hub = [
 ]
 
 [dependencies]
+martha-engine-name = { path = "../martha-engine-name" }
 anyhow = { workspace = true }
 async-stream = { workspace = true }
 async-trait = { workspace = true }

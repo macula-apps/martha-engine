@@ -268,7 +268,11 @@ fn read_review_md(path: &Path, canonical_repo_root: &Path) -> Result<Option<Stri
 pub fn global_checks_dirs() -> Vec<PathBuf> {
     let mut dirs = Vec::new();
     if let Some(home) = dirs_home() {
-        dirs.push(home.join(".config").join("goose").join("checks"));
+        dirs.push(
+            home.join(".config")
+                .join(martha_engine_name::ENGINE_NAME)
+                .join("checks"),
+        );
         dirs.push(home.join(".config").join("agents").join("checks"));
     }
     dirs

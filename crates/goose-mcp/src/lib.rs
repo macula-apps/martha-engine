@@ -9,13 +9,10 @@ use once_cell::sync::Lazy;
 use rmcp::{ServerHandler, ServiceExt};
 use std::collections::HashMap;
 
-// NOTE: "Block" is kept here for backwards compatibility with existing
-// user config/data directories. Changing this would orphan existing installations.
-pub static APP_STRATEGY: Lazy<AppStrategyArgs> = Lazy::new(|| AppStrategyArgs {
-    top_level_domain: "Block".to_string(),
-    author: "Block".to_string(),
-    app_name: "goose".to_string(),
-});
+// The fork's own folders, so a standalone install never reads or writes a
+// separate goose install's folders.
+pub static APP_STRATEGY: Lazy<AppStrategyArgs> =
+    Lazy::new(|| martha_engine_name::engine_app_strategy_args!());
 
 #[cfg(feature = "autovisualiser")]
 pub mod autovisualiser;

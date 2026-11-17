@@ -29,7 +29,7 @@ fn secrets_lock_path(path: &Path) -> PathBuf {
 }
 
 #[cfg(feature = "system-keyring")]
-const KEYRING_SERVICE: &str = "goose";
+const KEYRING_SERVICE: &str = martha_engine_name::ENGINE_NAME;
 #[cfg(feature = "system-keyring")]
 const KEYRING_USERNAME: &str = "secrets";
 pub const CONFIG_YAML_NAME: &str = "config.yaml";
@@ -162,13 +162,25 @@ fn system_config_path() -> PathBuf {
 
     #[cfg(unix)]
     {
-        PathBuf::from("/etc/goose/config.yaml")
+        PathBuf::from(concat!(
+            "/etc/",
+            martha_engine_name::engine_name!(),
+            "/config.yaml"
+        ))
     }
     #[cfg(windows)]
     {
         env::var("PROGRAMDATA")
-            .map(|d| PathBuf::from(d).join("goose").join("config.yaml"))
-            .unwrap_or_else(|_| PathBuf::from(r"C:\ProgramData\goose\config.yaml"))
+            .map(|d| {
+                PathBuf::from(d)
+                    .join(martha_engine_name::ENGINE_NAME)
+                    .join("config.yaml")
+            })
+            .unwrap_or_else(|_| {
+                PathBuf::from(r"C:\ProgramData")
+                    .join(martha_engine_name::ENGINE_NAME)
+                    .join("config.yaml")
+            })
     }
 }
 
