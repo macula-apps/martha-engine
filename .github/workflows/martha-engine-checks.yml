@@ -1,0 +1,108 @@
+# The fork's own checks (macula-io/martha#547 S2): the engine is built once, then held to the rebrand, telemetry and
+# self-update checks (martha/checks/run.sh, from S1), to no lookup of PostHog's capture host while it runs, and to the
+# #541 trial lines. They run on every pull request into main and, called by martha-engine-sync.yml, on a sync branch.
+name: martha-engine checks
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_call:
+    inputs:
+      ref:
+        description: The branch to check
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+# bash with pipefail: a script piped into tee fails the step when the script fails.
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  only-the-forks-workflows:
+    name: Only the fork's own workflows are active
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: ${{ inputs.ref || github.event.pull_request.head.sha }}
+          sparse-checkout: martha/sync
+          persist-credentials: false
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: martha/sync/only_the_forks_workflows_are_active.sh "$GITHUB_REPOSITORY"
+
+  checks:
+    name: Build the engine and run the fork's checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: ${{ inputs.ref || github.event.pull_request.head.sha }}
+          path: engine
+          persist-credentials: false
+
+      - name: Read the pins
+        run: grep -E '^[A-Z_]+=' engine/martha/sync/pins.env >> "$GITHUB_ENV"
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          repository: ${{ env.MARTHA_REPOSITORY }}
+          ref: ${{ env.MARTHA_SHA }}
+          path: martha
+          persist-credentials: false
+
+      - uses: actions-rust-lang/setup-rust-toolchain@a188e68d0fd2bd36ad51dccb2b07ba6e75105f30  # v2.0.1
+        with:
+          rust-src-dir: engine
+          cache-workspaces: engine
+
+      - id: node
+        run: engine/martha/sync/the_node_line_martha_ci_runs.sh martha >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
+        with:
+          node-version: ${{ steps.node.outputs.node }}
+
+      - name: Build the engine
+        working-directory: engine
+        env:
+          CARGO_INCREMENTAL: 0
+          CARGO_PROFILE_DEV_DEBUG: 0
+        run: |
+          sudo apt-get update -y && sudo apt-get install -y libdbus-1-dev libxcb1-dev strace
+          CHECK=build source martha/checks/engine_name.sh
+          cargo build --locked -p goose-cli --bin "$ENGINE_NAME" --no-default-features --features portable-default
+          echo "ENGINE_BIN=$PWD/target/debug/$ENGINE_NAME" >> "$GITHUB_ENV"
+
+      - name: Rebrand, telemetry and self-update (S1's checks)
+        if: ${{ !cancelled() }}
+        working-directory: engine
+        run: martha/checks/run.sh --bin "$ENGINE_BIN"
+
+      - name: Serve the trial model
+        if: ${{ !cancelled() }}
+        run: engine/martha/sync/serve_the_trial_model.sh "$RUNNER_TEMP/model"
+
+      - name: Run the trial lines, recording every DNS query
+        if: ${{ !cancelled() }}
+        run: |
+          engine/martha/sync/watch_for_the_capture_host.sh start "$RUNNER_TEMP/dns.txt"
+          engine/martha/sync/run_the_trial_lines.sh "$ENGINE_BIN" engine martha "$RUNNER_TEMP/trial"
+
+      - name: No lookup of PostHog's capture host
+        if: ${{ !cancelled() }}
+        run: engine/martha/sync/watch_for_the_capture_host.sh verdict "$RUNNER_TEMP/dns.txt" engine
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        if: ${{ !cancelled() }}
+        with:
+          name: trial-evidence
+          path: ${{ runner.temp }}/trial/line-*
+          retention-days: 14
