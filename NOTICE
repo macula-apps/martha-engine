@@ -18,8 +18,18 @@ can be read in one place.
 - The command-line binary is named martha-engine instead of goose.
 - The engine keeps its own state under its own name: its configuration,
   data, state and cache folders, the system-wide configuration, the OS
-  keyring service and its global checks and plugin settings. It never reads
-  or writes a goose installation's folders or secrets.
+  keyring service and its global checks and plugin settings. It never
+  writes a goose installation's folders or secrets.
+- What it still reads under goose's name, on purpose:
+  - The shared agent folders that several agents use, as goose does:
+    .goose/agents, .goose/recipes and .goose/skills in the project,
+    ~/.goose/agents and ~/.goose/recipes in your home folder, a project's
+    .config/goose plugin settings, and project memories in .goose/memory,
+    which the memory extension also writes.
+  - An import from goose, only when an ACP client asks for one during
+    onboarding: it reads ~/.config/goose/config.yaml (provider, model,
+    extensions), the secrets.yaml beside it and its skills, and copies them
+    into the engine's own configuration. It changes nothing in goose's folder.
 - --version, the usage line, the info header and the engine's own HTTP user
   agents name martha-engine, and --version says it is built on Goose.
 - Telemetry is compiled out: the telemetry feature is not part of the default
