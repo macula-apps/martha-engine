@@ -1,63 +1,75 @@
-<div align="center">
+# martha-engine
 
-# goose
-
-_your native open source AI agent — desktop app, CLI, and API — for code, workflows, and everything in between_
+[![CI](https://img.shields.io/github/actions/workflow/status/macula-apps/martha-engine/ci.yml?label=CI)](https://github.com/macula-apps/martha-engine/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](#license)
+[![GitHub Sponsors](https://img.shields.io/badge/GitHub%20Sponsors-support-ea4aaa.svg?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/rgfaber)
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-support-ffdd00.svg?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/rlefever)
 
 <p align="center">
-  <a href="https://opensource.org/licenses/Apache-2.0"
-    ><img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg"></a>
-  <a href="https://discord.gg/n8R5VaWDAn"
-    ><img src="https://img.shields.io/discord/1287729918100246654?logo=discord&logoColor=white&label=Join+Us&color=blueviolet" alt="Discord"></a>
-  <a href="https://github.com/aaif-goose/goose/actions/workflows/ci.yml"
-     ><img src="https://img.shields.io/github/actions/workflow/status/aaif-goose/goose/ci.yml?branch=main" alt="CI"></a>
-  <a href="https://insights.linuxfoundation.org/project/goose"><img src="https://insights.linuxfoundation.org/api/badge/health-score?project=goose"></a>
-  <a href="https://repology.org/project/goose-cli/versions"><img src="https://repology.org/badge/tiny-repos/goose-cli.svg" alt="Packaging status"></a>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/macula-io/martha/main/assets/martha-full-dark.svg">
+    <img src="https://raw.githubusercontent.com/macula-io/martha/main/assets/martha-full-light.svg" alt="Macula Martha" width="320">
+  </picture>
 </p>
 
-<a href="https://trendshift.io/repositories/25298?utm_source=repository-badge&amp;utm_medium=badge&amp;utm_campaign=badge-repository-25298" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/repositories/25298" alt="aaif-goose%2Fgoose | Trendshift" width="250" height="55"/></a>
+<p align="center">
+  <strong>A crew of coding agents that builds software the way a good team does</strong>
+</p>
 
-</div>
+---
 
+martha-engine is the agent engine that ships with standalone
+[Martha](https://github.com/macula-io/martha). This repository holds the
+engine; Martha itself lives in [macula-io/martha](https://github.com/macula-io/martha).
 
-goose is a general-purpose AI agent that runs on your machine. Not just for code — use it for research, writing, automation, data analysis, or anything you need to get done.
+## What is Martha?
 
-A native desktop app for macOS, Linux, and Windows. A full CLI for terminal workflows. An API to embed it anywhere. Built in Rust for performance and portability.
+Martha gives each coding agent a job on a crew: one builds, another reviews,
+and a conductor hands work from one to the next. Every hand-off, verdict and
+release is written down, so you can always see who did what and why.
 
-goose works with 15+ providers — Anthropic, OpenAI, Google, Ollama, OpenRouter, Azure, Bedrock, and more. Use API keys or your existing Claude, ChatGPT, or Gemini subscriptions via [ACP](https://goose-docs.ai/docs/guides/acp-providers). Connect to 70+ extensions via the [Model Context Protocol](https://modelcontextprotocol.io/) open standard.
+The crew works with one method: event storming to find the business,
+vertical slices (one directory per capability), and event sourcing. Names say
+what the code does.
 
-goose is part of the [Agentic AI Foundation (AAIF)](https://aaif.io/) at the Linux Foundation.
+## Two modes, one tool
 
-# Get started
+| | **Solo** | **Team** |
+|---|---|---|
+| Who | one developer on one machine | several people, several machines |
+| Needs | nothing else: no mesh, no account | the [Macula](https://github.com/macula-io/macula) mesh |
+| Who may approve a push or a release | you | the people the team names |
 
-**[Download the desktop app](https://goose-docs.ai/docs/getting-started/installation)** for macOS, Linux, and Windows.
+The mode is a table of who may do what, not a different program. Solo is a
+table with one person allowed to do everything; team is a table with roles.
+Start solo and move to team without changing tools.
 
-Or install the CLI:
+## This engine
 
-```bash
-curl -fsSL https://github.com/aaif-goose/goose/releases/download/stable/download_cli.sh | bash
-```
+martha-engine is built on [Goose](https://github.com/aaif-goose/goose)
+(Apache-2.0). It is not Goose, and it is not endorsed by the Goose project or
+its maintainers. Every change the fork makes is listed in [NOTICE](NOTICE),
+one commit each on top of an upstream Goose release. For what the agent
+itself can do (providers, extensions, recipes), read
+[Goose's documentation](https://goose-docs.ai).
 
-# Quick links
-- [Quickstart](https://goose-docs.ai/docs/quickstart)
-- [Installation](https://goose-docs.ai/docs/getting-started/installation)
-- [Tutorials](https://goose-docs.ai/docs/category/tutorials)
-- [Documentation](https://goose-docs.ai/docs/category/getting-started)
-- [Governance](https://github.com/aaif-goose/goose/blob/main/GOVERNANCE.md)
-- [Custom Distributions](https://github.com/aaif-goose/goose/blob/main/CUSTOM_DISTROS.md) — build your own goose distro with preconfigured providers, extensions, and branding
+## Install
 
-## Need help?
-- [Diagnostics & Reporting](https://goose-docs.ai/docs/troubleshooting/diagnostics-and-reporting)
-- [Known Issues](https://goose-docs.ai/docs/troubleshooting/known-issues)
+The engine ships inside standalone Martha and is installed and updated only
+through `martha` (`martha update`); there is no separate install.
 
-# a little goose humor 🪿
+## Why "Martha"?
 
-> Why did the developer choose goose as their AI agent?
-> 
-> Because it always helps them "migrate" their code to production! 🚀
+Martha was Paul McCartney's Old English sheepdog, the one in "Martha My Dear".
+A sheepdog keeps a flock together and moving the same way without doing the
+grazing itself. That is the job.
 
-# goose around with us
-- [Discord](https://discord.gg/n8R5VaWDAn)
-- [YouTube](https://www.youtube.com/@goose-oss)
-- [LinkedIn](https://www.linkedin.com/company/goose-oss)
-- [Twitter/X](https://x.com/goose_oss)
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) and our
+[Code of Conduct](CODE_OF_CONDUCT.md). To report a vulnerability, see
+[SECURITY.md](SECURITY.md).
+
+## License
+
+Apache-2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
