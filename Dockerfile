@@ -50,7 +50,7 @@ RUN apt-get update && \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy binary from builder
-COPY --from=builder /build/target/release/goose /usr/local/bin/goose
+COPY --from=builder /build/target/release/martha-engine /usr/local/bin/goose
 
 # Create non-root user
 RUN useradd -m -u 1000 -s /bin/bash goose && \

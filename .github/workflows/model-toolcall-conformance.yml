@@ -47,7 +47,7 @@ jobs:
         uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
 
       - name: Build Binary
-        run: cargo build --bin goose
+        run: cargo build --bin martha-engine
 
       - name: Run OpenRouter Tool Call Sweep
         env:
@@ -55,7 +55,7 @@ jobs:
           HOME: /tmp/goose-home
           GOOSE_DISABLE_KEYRING: 1
           SKIP_BUILD: 1
-          GOOSE_BIN: ${{ github.workspace }}/target/debug/goose
+          GOOSE_BIN: ${{ github.workspace }}/target/debug/martha-engine
         run: |
           mkdir -p /tmp/goose-home
           if [ -n "${{ inputs.models }}" ]; then
