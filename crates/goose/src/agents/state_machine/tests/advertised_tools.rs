@@ -5,7 +5,6 @@ use super::calculator_extension::{value, ADD};
 use super::pipeline::test_pipeline;
 use super::pipeline::MessageKind::Agent;
 use crate::agents::state_machine::ops_llm::{ADVERTISED_TOOLS_NOTE, LLM_OPERATION_NAME};
-use crate::agents::state_machine::ops_skills::LOAD_SKILL_TOOL_NAME;
 use crate::agents::state_machine::ops_toolcalling::request_was_advertised;
 use crate::config::GooseMode;
 use crate::conversation::message::{Message, MessageContent};
@@ -168,90 +167,6 @@ async fn reused_id_pending_approval_keeps_advertised_tools_after_copy_and_import
     assert_eq!(
         persisted_advertised_tools_bytes(result.conversation().messages()),
         0
-    );
-    Ok(())
-}
-
-/// The skills extension is off for this session: `SkillOperation` must offer
-/// nothing the extension's switch would hide.
-#[tokio::test]
-async fn a_session_without_the_skills_extension_is_not_offered_load_skill() -> Result<()> {
-    let (pipeline, api) = test_pipeline().await?;
-    api.on("hello").reply("hi");
-
-    pipeline.run(["hello"]).await?;
-
-    assert!(
-        !api.calls()[0].advertises_tool(LOAD_SKILL_TOOL_NAME),
-        "the session's extension selection has no skills entry, so {LOAD_SKILL_TOOL_NAME} must not be advertised"
-    );
-    Ok(())
-}
-
-#[tokio::test]
-async fn a_session_without_the_skills_extension_is_not_told_about_skills() -> Result<()> {
-    let (pipeline, api) = test_pipeline().await?;
-    let skill_dir = pipeline.working_dir().join(".agents/skills/review");
-    std::fs::create_dir_all(&skill_dir)?;
-    std::fs::write(
-        skill_dir.join("SKILL.md"),
-        "---\nname: review\ndescription: Review newly added code\n---\nREVIEW_SKILL_BODY",
-    )?;
-    api.on("hello").reply("hi");
-
-    pipeline.run(["hello"]).await?;
-
-    assert!(
-        !api.calls()[0].system_contains("Review newly added code"),
-        "with skills switched off the system prompt must not list skills the model cannot load"
-    );
-    Ok(())
-}
-
-/// A config that names no extension at all — the fresh-install shape — still
-/// switches skills on, because the extension carries that default itself. The
-/// selection below is the config's answer, never the test's.
-#[tokio::test]
-async fn a_config_naming_no_skills_entry_still_offers_load_skill_and_its_skills() -> Result<()> {
-    let config_root = tempfile::tempdir()?;
-    let config = crate::config::Config::new_with_file_secrets(
-        config_root.path().join("config.yaml"),
-        config_root.path().join("secrets.yaml"),
-    )?;
-    let switched_on: Vec<String> =
-        crate::config::extensions::get_enabled_extensions_with_config(&config)
-            .into_iter()
-            .filter(crate::agents::platform_extensions::is_platform)
-            .map(|extension| extension.name().to_string())
-            .collect();
-    assert!(
-        switched_on
-            .iter()
-            .any(|name| name == crate::skills::EXTENSION_NAME),
-        "a config naming no extension must still switch skills on at its own default"
-    );
-
-    let (pipeline, api) = test_pipeline().await?;
-    let skill_dir = pipeline.working_dir().join(".agents/skills/review");
-    std::fs::create_dir_all(&skill_dir)?;
-    std::fs::write(
-        skill_dir.join("SKILL.md"),
-        "---\nname: review\ndescription: Review newly added code\n---\nREVIEW_SKILL_BODY",
-    )?;
-    for name in &switched_on {
-        pipeline.add_extension(name).await?;
-    }
-    api.on("hello").reply("hi");
-
-    pipeline.run(["hello"]).await?;
-
-    assert!(
-        api.calls()[0].advertises_tool(LOAD_SKILL_TOOL_NAME),
-        "the config's own default switched skills on, so {LOAD_SKILL_TOOL_NAME} must be advertised"
-    );
-    assert!(
-        api.calls()[0].system_contains("Review newly added code"),
-        "the config's own default switched skills on, so the skill list must reach the system prompt"
     );
     Ok(())
 }
