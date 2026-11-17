@@ -181,3 +181,39 @@ async fn lists_skills_in_the_prompt_and_runs_them_as_commands() -> Result<()> {
         .contains("Review Card against a11y."));
     Ok(())
 }
+
+/// Not advertised: no list, no `load_skill`, no answer to an approved call, but the
+/// skills the user types are still commands.
+#[tokio::test]
+async fn unadvertised_skills_reach_only_the_user() -> Result<()> {
+    let skills = Arc::new(operation().with_advertised(false));
+
+    let tools = Operation::<(), ConversationEffect>::inference_tools(skills.as_ref(), &()).await?;
+    assert!(tools.is_empty(), "load_skill must not be offered");
+    let prompt = Operation::<(), ConversationEffect>::prompt_parts(
+        skills.as_ref(),
+        &(),
+        &Conversation::empty(),
+    )
+    .await?;
+    assert!(
+        prompt.is_empty(),
+        "the skill list must not reach the prompt"
+    );
+
+    let conversation = Conversation::new_unvalidated(vec![
+        Message::user().with_text("help me review"),
+        load_skill_call("skill", json!({ "name": "review" }), true),
+    ]);
+    let result =
+        Operation::<(), ConversationEffect>::run(skills.as_ref(), &(), &conversation, &emitter())
+            .await?;
+    assert!(
+        matches!(result, OperationResult::NotApplicable),
+        "a load_skill call must not be answered with the skill"
+    );
+
+    let commands = Operation::<(), ConversationEffect>::commands(skills.as_ref(), &()).await?;
+    assert!(commands.iter().any(|command| command.name == "review"));
+    Ok(())
+}

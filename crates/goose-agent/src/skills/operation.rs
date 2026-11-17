@@ -40,6 +40,7 @@ pub trait SkillSource<S>: MaybeSend + MaybeSync {
 pub struct SkillOperation<'a, S> {
     source: Arc<dyn SkillSource<S> + 'a>,
     no_skills_help: String,
+    advertised: bool,
 }
 
 impl<'a, S> SkillOperation<'a, S> {
@@ -47,7 +48,16 @@ impl<'a, S> SkillOperation<'a, S> {
         Self {
             source,
             no_skills_help: "No skills installed.\n".to_string(),
+            advertised: true,
         }
+    }
+
+    /// `false` keeps skills away from the model: no skill list in the prompt, no
+    /// `load_skill` tool, and no answer to a `load_skill` call. The skills the user
+    /// types (`/skills`, `/<skill-name>`) still run, since those are explicit asks.
+    pub fn with_advertised(mut self, advertised: bool) -> Self {
+        self.advertised = advertised;
+        self
     }
 
     pub fn with_no_skills_help(mut self, help: impl Into<String>) -> Self {
@@ -309,6 +319,9 @@ where
     }
 
     async fn inference_tools(&self, _session: &S) -> Result<Vec<Tool>> {
+        if !self.advertised {
+            return Ok(Vec::new());
+        }
         Ok(vec![load_skill_tool()])
     }
 
@@ -317,6 +330,9 @@ where
         session: &S,
         _conversation: &Conversation,
     ) -> Result<Vec<(String, String)>> {
+        if !self.advertised {
+            return Ok(Vec::new());
+        }
         let skills = self.sorted_skills(session).await?;
         if skills.is_empty() {
             return Ok(Vec::new());
@@ -336,6 +352,9 @@ where
         conversation: &Conversation,
         emit: &Emitter,
     ) -> Result<OperationResult<E>> {
+        if !self.advertised {
+            return not_applicable();
+        }
         let pending = pending_load_skill_calls(messages_since_kickoff(conversation)?);
         if pending.is_empty() {
             return not_applicable();

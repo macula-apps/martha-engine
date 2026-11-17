@@ -9,6 +9,7 @@ use crate::agents::state_machine::ops_toolcalling::request_was_advertised;
 use crate::config::GooseMode;
 use crate::conversation::message::{Message, MessageContent};
 use crate::permission::Permission;
+use goose_agent::skills::LOAD_SKILL_TOOL_NAME;
 
 fn advertised_tool_names(message: &Message) -> Option<&Vec<serde_json::Value>> {
     message
@@ -193,4 +194,117 @@ fn tool_request(messages: &[Message]) -> PendingToolRequest<'_> {
         .find_map(MessageContent::as_tool_request)
         .expect("tool request");
     PendingToolRequest { message, request }
+}
+
+fn install_review_skill(working_dir: &std::path::Path) -> Result<()> {
+    let skill_dir = working_dir.join(".agents/skills/review");
+    std::fs::create_dir_all(&skill_dir)?;
+    std::fs::write(
+        skill_dir.join("SKILL.md"),
+        "---\nname: review\ndescription: Review newly added code\n---\n\
+         REVIEW_SKILL_BODY: Review $ARGUMENTS carefully.",
+    )?;
+    Ok(())
+}
+
+/// The fork's skills switch, unset: the model is offered `load_skill` and the list.
+#[tokio::test]
+async fn skills_are_offered_to_the_model_by_default() -> Result<()> {
+    let (pipeline, api) = test_pipeline().await?;
+    install_review_skill(pipeline.working_dir())?;
+    api.on("hello").reply("hi");
+
+    pipeline.run(["hello"]).await?;
+
+    assert!(api.calls()[0].advertises_tool(LOAD_SKILL_TOOL_NAME));
+    assert!(api.calls()[0].system_contains("Review newly added code"));
+    Ok(())
+}
+
+/// Switched off: neither the list nor `load_skill` reaches the model.
+#[tokio::test]
+async fn skills_switched_off_are_not_offered_to_the_model() -> Result<()> {
+    let (pipeline, api) = test_pipeline().await?;
+    let pipeline = pipeline.with_skills_advertised(false);
+    install_review_skill(pipeline.working_dir())?;
+    api.on("hello").reply("hi");
+
+    pipeline.run(["hello"]).await?;
+
+    assert!(
+        !api.calls()[0].advertises_tool(LOAD_SKILL_TOOL_NAME),
+        "skills are switched off, so {LOAD_SKILL_TOOL_NAME} must not be advertised"
+    );
+    assert!(
+        !api.calls()[0].system_contains("Review newly added code"),
+        "skills are switched off, so the system prompt must not list them"
+    );
+    Ok(())
+}
+
+/// Switched off, a model that calls `load_skill` by name anyway never gets the body.
+#[tokio::test]
+async fn skills_switched_off_do_not_answer_a_load_skill_call() -> Result<()> {
+    let (pipeline, api) = test_pipeline().await?;
+    let pipeline = pipeline.with_skills_advertised(false);
+    install_review_skill(pipeline.working_dir())?;
+    api.on("use the skill").reply("went on without it");
+    api.on("use the skill")
+        .unadvertised_call(
+            LOAD_SKILL_TOOL_NAME,
+            serde_json::json!({ "name": "review" }),
+        )
+        .times(1);
+
+    let result = pipeline.run(["use the skill"]).await?;
+
+    assert!(api.call_count() >= 2, "the model must get a second turn");
+    assert!(
+        api.calls()
+            .iter()
+            .all(|call| !call.input_contains("REVIEW_SKILL_BODY")),
+        "skills are switched off, so a {LOAD_SKILL_TOOL_NAME} call must not deliver the skill"
+    );
+    result.assert_message(-1, Agent, "went on without it");
+    Ok(())
+}
+
+/// Switched off, a skill the user types still runs: that is an explicit ask.
+#[tokio::test]
+async fn skills_switched_off_still_run_when_the_user_types_one() -> Result<()> {
+    let (pipeline, api) = test_pipeline().await?;
+    let pipeline = pipeline.with_skills_advertised(false);
+    install_review_skill(pipeline.working_dir())?;
+    api.on("Review src/lib.rs carefully.").reply("reviewed");
+
+    let result = pipeline.run(["/review src/lib.rs"]).await?;
+
+    result.assert_message(-1, Agent, "reviewed");
+    Ok(())
+}
+
+/// The switch is read from config: absent means on, `false` means off.
+#[test]
+fn the_skills_switch_reads_goose_skills_advertised_from_config() -> Result<()> {
+    let root = tempfile::tempdir()?;
+    let config_file = root.path().join("config.yaml");
+    let config = crate::config::Config::new_with_file_secrets(
+        &config_file,
+        root.path().join("secrets.yaml"),
+    )?;
+    assert!(
+        crate::agents::services::skills_advertised(&config),
+        "a config that does not name the switch must leave skills on"
+    );
+
+    std::fs::write(&config_file, "GOOSE_SKILLS_ADVERTISED: false\n")?;
+    let config = crate::config::Config::new_with_file_secrets(
+        &config_file,
+        root.path().join("secrets.yaml"),
+    )?;
+    assert!(
+        !crate::agents::services::skills_advertised(&config),
+        "GOOSE_SKILLS_ADVERTISED: false must switch skills off"
+    );
+    Ok(())
 }

@@ -57,6 +57,7 @@ pub(crate) struct StateMachineConfig<'a> {
     pub(crate) extra_operations: Vec<Arc<dyn Operation<Session, GooseEffect>>>,
     pub(crate) cancel: CancellationToken,
     pub(crate) context_relevance: Option<Arc<dyn DecisionProvider>>,
+    pub(crate) advertise_skills: bool,
 }
 
 /// Providers that manage their own context never run the operation, so they
@@ -122,11 +123,14 @@ pub(crate) fn build_state_machine(
         extra_operations,
         cancel,
         context_relevance,
+        advertise_skills,
     } = config;
     let manages_own_context = provider.manages_own_context();
 
     let skills: Arc<dyn Operation<Session, GooseEffect> + '_> = Arc::new(
-        SkillOperation::new(Arc::new(GooseSkillSource)).with_no_skills_help(NO_SKILLS_HELP),
+        SkillOperation::new(Arc::new(GooseSkillSource))
+            .with_no_skills_help(NO_SKILLS_HELP)
+            .with_advertised(advertise_skills),
     );
     let mut operations: Vec<Arc<dyn Operation<Session, GooseEffect> + '_>> = vec![
         Arc::new(FinalOutputOperation::new(provider.clone())),
