@@ -15,6 +15,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 # bash with pipefail: a script piped into tee fails the step when the script fails.
 defaults:
@@ -22,6 +23,20 @@ defaults:
     shell: bash
 
 jobs:
+  only-the-forks-workflows:
+    name: Only the fork's own workflows are active
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: ${{ inputs.ref || github.event.pull_request.head.sha }}
+          sparse-checkout: martha/sync
+          persist-credentials: false
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: martha/sync/only_the_forks_workflows_are_active.sh "$GITHUB_REPOSITORY"
+
   checks:
     name: Build the engine and run the fork's checks
     runs-on: ubuntu-latest
@@ -48,9 +63,10 @@ jobs:
           rust-src-dir: engine
           cache-workspaces: engine
 
+      # The Node line Martha's driver declares (engines.node in its package.json), read from the pinned checkout.
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
         with:
-          node-version: ${{ env.TRIAL_NODE_VERSION }}
+          node-version-file: martha/package.json
 
       - name: Build the engine
         working-directory: engine

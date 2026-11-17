@@ -46,7 +46,7 @@ jobs:
         run: martha/sync/pick_the_upstream_tag.sh "$ASKED" >> "$GITHUB_OUTPUT"
 
       - name: Merge
-        if: steps.pick.outputs.tag != ''
+        if: steps.pick.outputs.tag != '' && steps.pick.outputs.merged != '1'
         env:
           TAG: ${{ steps.pick.outputs.tag }}
         run: |
@@ -55,16 +55,17 @@ jobs:
           martha/sync/merge_the_upstream_tag.sh "$TAG" | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Push the sync branch, merged or left at main for a person
-        if: ${{ !cancelled() && steps.pick.outputs.tag != '' }}
+        if: ${{ !cancelled() && steps.pick.outputs.tag != '' && steps.pick.outputs.merged != '1' }}
         env:
           TAG: ${{ steps.pick.outputs.tag }}
-        run: git push origin "HEAD:refs/heads/sync/$TAG"
+        run: martha/sync/push_the_sync_branch.sh "$TAG" | tee -a "$GITHUB_STEP_SUMMARY"
 
   checks:
     needs: merge
     if: needs.merge.outputs.tag != ''
     permissions:
       contents: read
+      actions: read
     uses: ./.github/workflows/martha-engine-checks.yml
     with:
       ref: sync/${{ needs.merge.outputs.tag }}
