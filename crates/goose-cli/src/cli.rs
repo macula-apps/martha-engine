@@ -2986,7 +2986,7 @@ mod tests {
         init.write_long_help(&mut buffer).expect("write help");
 
         let help = String::from_utf8(buffer).expect("utf8");
-        assert!(help.contains("goose term init nu"));
+        assert!(help.contains(concat!(martha_engine_name::engine_name!(), " term init nu")));
         assert!(help.contains("Supported for zsh, bash, and nu"));
     }
 
