@@ -208,8 +208,29 @@ async fn a_session_without_the_skills_extension_is_not_told_about_skills() -> Re
     Ok(())
 }
 
+/// A config that names no extension at all — the fresh-install shape — still
+/// switches skills on, because the extension carries that default itself. The
+/// selection below is the config's answer, never the test's.
 #[tokio::test]
-async fn a_session_with_the_skills_extension_is_offered_load_skill() -> Result<()> {
+async fn a_config_naming_no_skills_entry_still_offers_load_skill_and_its_skills() -> Result<()> {
+    let config_root = tempfile::tempdir()?;
+    let config = crate::config::Config::new_with_file_secrets(
+        config_root.path().join("config.yaml"),
+        config_root.path().join("secrets.yaml"),
+    )?;
+    let switched_on: Vec<String> =
+        crate::config::extensions::get_enabled_extensions_with_config(&config)
+            .into_iter()
+            .filter(crate::agents::platform_extensions::is_platform)
+            .map(|extension| extension.name().to_string())
+            .collect();
+    assert!(
+        switched_on
+            .iter()
+            .any(|name| name == crate::skills::EXTENSION_NAME),
+        "a config naming no extension must still switch skills on at its own default"
+    );
+
     let (pipeline, api) = test_pipeline().await?;
     let skill_dir = pipeline.working_dir().join(".agents/skills/review");
     std::fs::create_dir_all(&skill_dir)?;
@@ -217,20 +238,20 @@ async fn a_session_with_the_skills_extension_is_offered_load_skill() -> Result<(
         skill_dir.join("SKILL.md"),
         "---\nname: review\ndescription: Review newly added code\n---\nREVIEW_SKILL_BODY",
     )?;
-    pipeline
-        .add_extension(crate::skills::EXTENSION_NAME)
-        .await?;
+    for name in &switched_on {
+        pipeline.add_extension(name).await?;
+    }
     api.on("hello").reply("hi");
 
     pipeline.run(["hello"]).await?;
 
     assert!(
         api.calls()[0].advertises_tool(LOAD_SKILL_TOOL_NAME),
-        "an enabled skills extension must still be advertised, as upstream does today"
+        "the config's own default switched skills on, so {LOAD_SKILL_TOOL_NAME} must be advertised"
     );
     assert!(
         api.calls()[0].system_contains("Review newly added code"),
-        "an enabled skills extension must still list its skills in the system prompt"
+        "the config's own default switched skills on, so the skill list must reach the system prompt"
     );
     Ok(())
 }
