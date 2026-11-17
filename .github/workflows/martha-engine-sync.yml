@@ -1,7 +1,8 @@
-# Keeps the fork on upstream's releases (macula-io/martha#547 S2). Daily, or on demand for one tag, it merges the
-# newest upstream release tag into a branch sync/<tag> made from main (a merge, never a rebase or a force-push), runs
-# upstream's own CI and the fork's checks on that branch, and only when both pass opens a pull request into main.
-# Main moves only when that pull request lands. A conflict or a red check stops here, on the branch, naming the patch.
+# Keeps the fork on Goose's main (macula-io/martha#547 S2). Daily it merges upstream's main into a branch sync/<sha>
+# made from the fork's main (a merge, never a rebase or a force-push), runs upstream's own CI and the fork's checks on
+# that branch, and only when both pass opens a pull request into main. Main moves only when that pull request lands.
+# A day is skipped when upstream has not moved or an earlier sync is unfinished. A conflict, a refused push or a red
+# check stops here, on the branch, naming the patch; a person finishes it and dispatches the job with `resume`.
 name: martha-engine sync
 
 on:
@@ -9,8 +10,8 @@ on:
     - cron: '23 4 * * *'
   workflow_dispatch:
     inputs:
-      tag:
-        description: An upstream release tag, like v1.59.2; empty takes the newest
+      resume:
+        description: A sync branch a person has finished merging, like sync/0123456789ab; empty syncs upstream's main
         required: false
         type: string
 
@@ -26,13 +27,14 @@ defaults:
 
 jobs:
   merge:
-    name: Merge the upstream tag into its sync branch
+    name: Merge upstream's main into its sync branch
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
       contents: write
     outputs:
-      tag: ${{ steps.pick.outputs.tag }}
+      sync: ${{ steps.pick.outputs.sync }}
+      upstream: ${{ steps.pick.outputs.upstream }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
@@ -42,38 +44,40 @@ jobs:
 
       - id: pick
         env:
-          ASKED: ${{ inputs.tag }}
-        run: martha/sync/pick_the_upstream_tag.sh "$ASKED" >> "$GITHUB_OUTPUT"
+          RESUME: ${{ inputs.resume }}
+        run: martha/sync/pick_the_upstream_change.sh "$RESUME" >> "$GITHUB_OUTPUT"
 
       - name: Merge
-        if: steps.pick.outputs.tag != '' && steps.pick.outputs.merged != '1'
+        if: steps.pick.outputs.sync != '' && steps.pick.outputs.merged != '1'
         env:
-          TAG: ${{ steps.pick.outputs.tag }}
+          SYNC: ${{ steps.pick.outputs.sync }}
+          UPSTREAM: ${{ steps.pick.outputs.upstream }}
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          martha/sync/merge_the_upstream_tag.sh "$TAG" | tee -a "$GITHUB_STEP_SUMMARY"
+          martha/sync/merge_the_upstream_change.sh "$SYNC" "$UPSTREAM" | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Push the sync branch, merged or left at main for a person
-        if: ${{ !cancelled() && steps.pick.outputs.tag != '' && steps.pick.outputs.merged != '1' }}
+        if: ${{ !cancelled() && steps.pick.outputs.sync != '' && steps.pick.outputs.merged != '1' }}
         env:
-          TAG: ${{ steps.pick.outputs.tag }}
-        run: martha/sync/push_the_sync_branch.sh "$TAG" | tee -a "$GITHUB_STEP_SUMMARY"
+          SYNC: ${{ steps.pick.outputs.sync }}
+          UPSTREAM: ${{ steps.pick.outputs.upstream }}
+        run: martha/sync/push_the_sync_branch.sh "$SYNC" "$UPSTREAM" | tee -a "$GITHUB_STEP_SUMMARY"
 
   checks:
     needs: merge
-    if: needs.merge.outputs.tag != ''
+    if: needs.merge.outputs.sync != ''
     permissions:
       contents: read
       actions: read
     uses: ./.github/workflows/martha-engine-checks.yml
     with:
-      ref: sync/${{ needs.merge.outputs.tag }}
+      ref: ${{ needs.merge.outputs.sync }}
 
   upstream-ci:
     name: Run upstream's CI on the sync branch
     needs: merge
-    if: needs.merge.outputs.tag != ''
+    if: needs.merge.outputs.sync != ''
     runs-on: ubuntu-latest
     timeout-minutes: 120
     permissions:
@@ -81,7 +85,7 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
-      BRANCH: sync/${{ needs.merge.outputs.tag }}
+      BRANCH: ${{ needs.merge.outputs.sync }}
     steps:
       - run: |
           gh workflow run ci.yml --ref "$BRANCH"
@@ -97,31 +101,29 @@ jobs:
   name-the-patch:
     name: Name the patch behind a red check
     needs: [merge, checks, upstream-ci]
-    if: failure() && needs.merge.result == 'success' && needs.merge.outputs.tag != ''
+    if: failure() && needs.merge.result == 'success' && needs.merge.outputs.sync != ''
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
       contents: read
     env:
-      TAG: ${{ needs.merge.outputs.tag }}
+      SYNC: ${{ needs.merge.outputs.sync }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
-          ref: sync/${{ needs.merge.outputs.tag }}
+          ref: ${{ needs.merge.outputs.sync }}
           fetch-depth: 0
           filter: blob:none
           persist-credentials: false
       - run: |
-          source martha/sync/pins.env
-          git fetch --quiet --no-tags "$UPSTREAM_URL" "+refs/tags/$TAG:refs/tags/$TAG"
-          echo "A check is red on sync/$TAG. Among the files the merge of $TAG changed:" >> "$GITHUB_STEP_SUMMARY"
+          echo "A check is red on $SYNC. Among the files its merge changed:" >> "$GITHUB_STEP_SUMMARY"
           mapfile -t changed < <(git diff --name-only HEAD^1 HEAD)
-          martha/sync/name_the_patch.sh "$TAG" "${changed[@]}" | tee -a "$GITHUB_STEP_SUMMARY"
+          martha/sync/name_the_patch.sh "${changed[@]}" | tee -a "$GITHUB_STEP_SUMMARY"
 
   pull-request:
     name: Open the pull request into main
     needs: [merge, checks, upstream-ci]
-    if: needs.merge.outputs.tag != ''
+    if: needs.merge.outputs.sync != ''
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -129,8 +131,9 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
-      TAG: ${{ needs.merge.outputs.tag }}
+      SYNC: ${{ needs.merge.outputs.sync }}
+      UPSTREAM: ${{ needs.merge.outputs.upstream }}
     steps:
       - run: |
-          gh pr create --base main --head "sync/$TAG" --title "Sync upstream $TAG" \
-            --body "Merges upstream $TAG into the fork. Upstream's CI and the fork's checks passed on this branch (run $GITHUB_RUN_ID); its summary names any workflow this merge adds, to turn off before this lands. Main moves only when this lands."
+          gh pr create --base main --head "$SYNC" --title "Sync upstream main at ${UPSTREAM:0:12}" \
+            --body "Merges Goose's main at $UPSTREAM into the fork. Upstream's CI and the fork's checks passed on this branch (run $GITHUB_RUN_ID); its summary names any workflow this merge adds, to turn off before this lands. Main moves only when this lands."
