@@ -90,7 +90,6 @@ portable-default = [
     "tree-sitter",
     "live-voice",
     "aws-providers",
-    "telemetry",
     "otel",
     "scheduler",
     "platform-apps",
