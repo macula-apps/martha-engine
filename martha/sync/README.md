@@ -51,6 +51,12 @@ portable-default`, the build the #541 trial ran; the binary's name is read by S1
 and then runs the checks below. A job beside it fails while any workflow other than the fork's own
 (`FORK_WORKFLOWS` in `pins.env`) is active on the repository (`only_the_forks_workflows_are_active.sh`).
 
+GitHub registers a workflow file the first time an event triggers it, and registers it as active; a file it has not
+registered cannot be disabled ahead of time (the API answers 404). So an upstream workflow that has never run, or
+that a sync brings in, turns this job red on its first trigger. Red on a new upstream workflow means: disable it under
+the owner's decision that inherited workflows are off (`gh workflow disable <file> -R macula-apps/martha-engine`),
+then re-run the job. The job only reads, so it never turns a workflow off itself.
+
 | Check | What it proves | From |
 |---|---|---|
 | `martha/checks/run.sh` | The rebrand is intact (binary, folders, the names users see, licence notices), and telemetry and self-update are compiled out of the binary and the feature lists | S1 |
