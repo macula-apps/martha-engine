@@ -1,6 +1,7 @@
 # Keeps the fork on Goose's main (macula-io/martha#547 S2). Daily it merges upstream's main into a branch sync/<sha>
 # made from the fork's main (a merge, never a rebase or a force-push), runs upstream's own CI and the fork's checks on
-# that branch, and only when both pass opens a pull request into main. Main moves only when that pull request lands.
+# that branch, and only when both pass reports the branch green; a member opens its pull request into main (Actions may
+# not create pull requests on the fork, by the owner's decision). Main moves only when that pull request lands.
 # A day is skipped when upstream has not moved or an earlier sync is unfinished. A conflict, a refused push or a red
 # check stops here, on the branch, naming the patch; a person finishes it and dispatches the job with `resume`.
 name: martha-engine sync
@@ -121,13 +122,14 @@ jobs:
           martha/sync/name_the_patch.sh "${changed[@]}" | tee -a "$GITHUB_STEP_SUMMARY"
 
   pull-request:
-    name: Open the pull request into main
+    name: Report the green sync branch for a member to open its pull request
     needs: [merge, checks, upstream-ci]
     if: needs.merge.outputs.sync != ''
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    # Actions may not create pull requests on the fork (owner, 2026-11-18): this job only reports, with read access.
     permissions:
-      pull-requests: write
+      contents: read
     env:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
@@ -135,5 +137,12 @@ jobs:
       UPSTREAM: ${{ needs.merge.outputs.upstream }}
     steps:
       - run: |
-          gh pr create --base main --head "$SYNC" --title "Sync upstream main at ${UPSTREAM:0:12}" \
-            --body "Merges Goose's main at $UPSTREAM into the fork. Upstream's CI and the fork's checks passed on this branch (run $GITHUB_RUN_ID); its summary names any workflow this merge adds, to turn off before this lands. Main moves only when this lands."
+          tip="$(gh api "repos/${GH_REPO}/commits/${SYNC}" --jq .sha)"
+          {
+            echo "sync branch ${SYNC} at ${tip} is green; a member opens its PR:"
+            echo
+            echo "    gh pr create -R ${GH_REPO} --base main --head ${SYNC} --title \"Sync upstream main at ${UPSTREAM:0:12}\""
+            echo
+            echo "Upstream's CI and the fork's checks passed on ${tip} (run ${GITHUB_RUN_ID}). The merge job's summary names"
+            echo "any workflow this merge adds, to turn off before the pull request lands."
+          } | tee -a "$GITHUB_STEP_SUMMARY"
