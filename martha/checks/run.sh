@@ -28,7 +28,7 @@ if [ -z "$ENGINE_BIN" ]; then
 fi
 export ENGINE_BIN="$(cd "$(dirname "$ENGINE_BIN")" && pwd)/$(basename "$ENGINE_BIN")"
 
-checks=(engine_named folders_named names_carry_name licence_notices_ship
+checks=(engine_named folders_named names_carry_name help_names_engine licence_notices_ship
         telemetry_compiled_out self_update_compiled_out)
 failed=()
 for check in "${checks[@]}"; do

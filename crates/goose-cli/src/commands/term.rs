@@ -245,7 +245,7 @@ pub async fn handle_term_init(
 
     let goose_bin = std::env::current_exe()
         .map(|p| p.to_string_lossy().into_owned())
-        .unwrap_or_else(|_| "goose".to_string());
+        .unwrap_or_else(|_| martha_engine_name::ENGINE_NAME.to_string());
 
     if include_history {
         eprintln!(

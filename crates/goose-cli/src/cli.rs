@@ -150,7 +150,7 @@ pub struct SessionOptions {
         long = "container",
         value_name = "CONTAINER_ID",
         help = "Docker container ID to run extensions inside",
-        long_help = "Run extensions (stdio and built-in) inside the specified container. The extension must exist in the container. For built-in extensions, goose must be installed inside the container."
+        long_help = concat!("Run extensions (stdio and built-in) inside the specified container. The extension must exist in the container. For built-in extensions, ", martha_engine_name::engine_name!(), " must be installed inside the container.")
     )]
     pub container: Option<String>,
 }
@@ -213,7 +213,7 @@ pub struct ExtensionOptions {
         long = "with-builtin",
         value_name = "NAME",
         help = "Add builtin extensions by name (e.g., 'developer' or multiple: 'developer,github')",
-        long_help = "Add one or more builtin extensions that are bundled with goose by specifying their names, comma-separated",
+        long_help = concat!("Add one or more builtin extensions that are bundled with ", martha_engine_name::engine_name!(), " by specifying their names, comma-separated"),
         value_delimiter = ','
     )]
     pub builtins: Vec<String>,
@@ -244,8 +244,8 @@ pub struct InputOptions {
         short = 't',
         long = "text",
         value_name = "TEXT",
-        help = "Input text to provide to goose directly",
-        long_help = "Input text containing commands for goose. Use this in lieu of the instructions argument.",
+        help = concat!("Input text to provide to ", martha_engine_name::engine_name!(), " directly"),
+        long_help = concat!("Input text containing commands for ", martha_engine_name::engine_name!(), ". Use this in lieu of the instructions argument."),
         conflicts_with = "instructions",
         conflicts_with = "recipe"
     )]
@@ -276,7 +276,7 @@ pub struct InputOptions {
     #[arg(
         long,
         value_name = "KEY=VALUE",
-        help = "Dynamic parameters (e.g., --params username=alice --params channel_name=goose-channel)",
+        help = concat!("Dynamic parameters (e.g., --params username=alice --params channel_name=", martha_engine_name::engine_name!(), "-channel)"),
         long_help = "Key-value parameters to pass to the recipe file. Can be specified multiple times.",
         action = clap::ArgAction::Append,
         value_parser = parse_key_val,
@@ -740,7 +740,7 @@ enum PluginCommand {
 #[derive(Subcommand)]
 enum SkillsCommand {
     /// List all skills available to the goose agent
-    #[command(about = "List all skills available to the goose agent")]
+    #[command(about = concat!("List all skills available to the ", martha_engine_name::engine_name!(), " agent"))]
     List,
 }
 
@@ -813,11 +813,11 @@ enum RecipeCommand {
 #[derive(Subcommand)]
 enum Command {
     /// Configure goose settings
-    #[command(about = "Configure goose settings")]
+    #[command(about = concat!("Configure ", martha_engine_name::engine_name!(), " settings"))]
     Configure {},
 
     /// Display goose configuration information
-    #[command(about = "Display goose information")]
+    #[command(about = concat!("Display ", martha_engine_name::engine_name!(), " information"))]
     Info {
         /// Show verbose information including current configuration
         #[arg(short, long, help = "Show verbose information including config.yaml")]
@@ -826,26 +826,26 @@ enum Command {
         check: bool,
     },
 
-    #[command(about = "Check that your Goose setup is working")]
+    #[command(about = concat!("Check that your ", martha_engine_name::engine_name!(), " setup is working"))]
     Doctor {},
 
     /// Manage system prompts and behaviors
     #[cfg(feature = "bundled-mcp")]
-    #[command(about = "Run one of the mcp servers bundled with goose")]
+    #[command(about = concat!("Run one of the mcp servers bundled with ", martha_engine_name::engine_name!()))]
     Mcp {
         #[arg(value_parser = clap::value_parser!(McpCommand))]
         server: McpCommand,
     },
 
     /// Run goose as an ACP (Agent Client Protocol) agent
-    #[command(about = "Run goose as an ACP agent server on stdio")]
+    #[command(about = concat!("Run ", martha_engine_name::engine_name!(), " as an ACP agent server on stdio"))]
     Acp {
         /// Add builtin extensions by name
         #[arg(
             long = "with-builtin",
             value_name = "NAME",
             help = "Add builtin extensions by name (e.g., 'developer' or multiple: 'developer,github')",
-            long_help = "Add one or more builtin extensions that are bundled with goose by specifying their names, comma-separated",
+            long_help = concat!("Add one or more builtin extensions that are bundled with ", martha_engine_name::engine_name!(), " by specifying their names, comma-separated"),
             value_delimiter = ','
         )]
         builtins: Vec<String>,
@@ -888,7 +888,7 @@ enum Command {
             long = "with-builtin",
             value_name = "NAME",
             help = "Add builtin extensions by name (e.g., 'developer' or multiple: 'developer,github')",
-            long_help = "Add one or more builtin extensions that are bundled with goose by specifying their names, comma-separated",
+            long_help = concat!("Add one or more builtin extensions that are bundled with ", martha_engine_name::engine_name!(), " by specifying their names, comma-separated"),
             value_delimiter = ',',
             action = clap::ArgAction::Append
         )]
@@ -915,7 +915,7 @@ enum Command {
         #[cfg(feature = "roaming")]
         #[arg(
             long,
-            help = "Also expose this server over goose roam (p2p) so paired devices can connect remotely"
+            help = concat!("Also expose this server over ", martha_engine_name::engine_name!(), " roam (p2p) so paired devices can connect remotely")
         )]
         roam: bool,
     },
@@ -1052,34 +1052,34 @@ enum Command {
 
     /// Update the goose CLI version
     #[cfg(feature = "update")]
-    #[command(about = "Update the goose CLI version")]
+    #[command(about = concat!("Update the ", martha_engine_name::engine_name!(), " CLI version"))]
     Update {
         /// Update to canary version
         #[arg(
             short,
             long,
             help = "Update to canary version",
-            long_help = "Update to the latest canary version of the goose CLI, otherwise updates to the latest stable version."
+            long_help = concat!("Update to the latest canary version of the ", martha_engine_name::engine_name!(), " CLI, otherwise updates to the latest stable version.")
         )]
         canary: bool,
 
         /// Enforce to re-configure goose during update
-        #[arg(short, long, help = "Enforce to re-configure goose during update")]
+        #[arg(short, long, help = concat!("Enforce to re-configure ", martha_engine_name::engine_name!(), " during update"))]
         reconfigure: bool,
     },
 
     /// Terminal-integrated session (one session per terminal)
     #[command(
-        about = "Terminal-integrated goose session",
-        long_about = "Runs a goose session tied to your terminal window.\n\
+        about = concat!("Terminal-integrated ", martha_engine_name::engine_name!(), " session"),
+        long_about = concat!("Runs a ", martha_engine_name::engine_name!(), " session tied to your terminal window.\n\
                       Each terminal maintains its own persistent session that resumes automatically.\n\n\
                       Setup:\n  \
-                        eval \"$(goose term init zsh)\"  # zsh/bash\n  \
-                        let init = ($nu.cache-dir | path join \"goose-term-init.nu\"); ^goose term init nu | save --force $init; source $init\n\n\
+                        eval \"$(", martha_engine_name::engine_name!(), " term init zsh)\"  # zsh/bash\n  \
+                        let init = ($nu.cache-dir | path join \"", martha_engine_name::engine_name!(), "-term-init.nu\"); ^", martha_engine_name::engine_name!(), " term init nu | save --force $init; source $init\n\n\
                       Usage:\n  \
-                        goose term run \"list files in this directory\"\n  \
+                        ", martha_engine_name::engine_name!(), " term run \"list files in this directory\"\n  \
                         @goose \"create a python script\"  # using alias\n  \
-                        @g \"quick question\"  # short alias"
+                        @g \"quick question\"  # short alias")
     )]
     Term {
         #[command(subcommand)]
@@ -1102,7 +1102,7 @@ enum Command {
         #[arg(value_enum)]
         shell: CompletionShell,
 
-        #[arg(long, default_value = "goose", help = "Provide a custom binary name")]
+        #[arg(long, default_value = martha_engine_name::ENGINE_NAME, help = "Provide a custom binary name")]
         bin_name: String,
     },
 
@@ -1118,7 +1118,7 @@ enum Command {
 
     #[command(
         name = "mcp-probe",
-        about = "Start a Goose MCP session without an LLM and inspect a stdio MCP server",
+        about = concat!("Start a ", martha_engine_name::engine_name!(), " MCP session without an LLM and inspect a stdio MCP server"),
         hide = true
     )]
     McpProbe {
@@ -1192,18 +1192,18 @@ enum TermCommand {
     /// Print shell initialization script
     #[command(
         about = "Print shell initialization script",
-        long_about = "Prints shell configuration to set up terminal-integrated sessions.\n\
-                      Each terminal gets a persistent goose session that automatically resumes.\n\n\
+        long_about = concat!("Prints shell configuration to set up terminal-integrated sessions.\n\
+                      Each terminal gets a persistent ", martha_engine_name::engine_name!(), " session that automatically resumes.\n\n\
                       Setup:\n  \
-                        echo 'eval \"$(goose term init zsh)\"' >> ~/.zshrc\n  \
+                        echo 'eval \"$(", martha_engine_name::engine_name!(), " term init zsh)\"' >> ~/.zshrc\n  \
                         source ~/.zshrc\n\n\
                         Nushell:\n  \
-                        let init = ($nu.cache-dir | path join \"goose-term-init.nu\")\n  \
-                        ^goose term init nu | save --force $init\n  \
+                        let init = ($nu.cache-dir | path join \"", martha_engine_name::engine_name!(), "-term-init.nu\")\n  \
+                        ^", martha_engine_name::engine_name!(), " term init nu | save --force $init\n  \
                         source $init\n\n\
-                      With --default (anything typed that isn't a command goes to goose):\n  \
-                        echo 'eval \"$(goose term init zsh --default)\"' >> ~/.zshrc\n  \
-                        ^goose term init nu --default | save --force $init"
+                      With --default (anything typed that isn't a command goes to ", martha_engine_name::engine_name!(), "):\n  \
+                        echo 'eval \"$(", martha_engine_name::engine_name!(), " term init zsh --default)\"' >> ~/.zshrc\n  \
+                        ^", martha_engine_name::engine_name!(), " term init nu --default | save --force $init")
     )]
     Init {
         /// Shell type (bash, zsh, fish, nu, powershell)
@@ -1216,8 +1216,8 @@ enum TermCommand {
         /// Make goose the default handler for unknown commands
         #[arg(
             long = "default",
-            help = "Make goose the default handler for unknown commands",
-            long_help = "When enabled, anything you type that isn't a valid command will be sent to goose. Supported for zsh, bash, and nu."
+            help = concat!("Make ", martha_engine_name::engine_name!(), " the default handler for unknown commands"),
+            long_help = concat!("When enabled, anything you type that isn't a valid command will be sent to ", martha_engine_name::engine_name!(), ". Supported for zsh, bash, and nu.")
         )]
         default: bool,
 
@@ -1225,10 +1225,10 @@ enum TermCommand {
         #[arg(
             long = "dangerous-include-history",
             help = "Record recent shell commands as context for @goose",
-            long_help = "When enabled, goose records recent shell commands and includes them as \
+            long_help = concat!("When enabled, ", martha_engine_name::engine_name!(), " records recent shell commands and includes them as \
                          context when you ask @goose a question.\n\n\
                          WARNING: command lines can contain credentials and other sensitive data, \
-                         which will be sent to the configured model provider."
+                         which will be sent to the configured model provider.")
         )]
         include_history: bool,
     },
@@ -1243,14 +1243,14 @@ enum TermCommand {
     /// Run a prompt in the terminal session
     #[command(
         about = "Run a prompt in the terminal session",
-        long_about = "Run a prompt in the terminal-integrated session.\n\n\
+        long_about = concat!("Run a prompt in the terminal-integrated session.\n\n\
                       Examples:\n  \
-                        goose term run list files in this directory\n  \
+                        ", martha_engine_name::engine_name!(), " term run list files in this directory\n  \
                         @goose list files  # using alias\n  \
-                        @g why did that fail  # short alias"
+                        @g why did that fail  # short alias")
     )]
     Run {
-        /// The prompt to send to goose (multiple words allowed without quotes)
+        #[doc = concat!("The prompt to send to ", martha_engine_name::engine_name!(), " (multiple words allowed without quotes)")]
         #[arg(required = true, num_args = 1..)]
         prompt: Vec<String>,
     },
