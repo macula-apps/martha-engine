@@ -4020,7 +4020,7 @@ dependencies = [
 
 [[package]]
 name = "goose"
-version = "1.60.0"
+version = "1.59.0"
 dependencies = [
  "agent-client-protocol",
  "agent-client-protocol-http",
@@ -4156,7 +4156,7 @@ dependencies = [
 
 [[package]]
 name = "goose-acp-macros"
-version = "1.60.0"
+version = "1.59.0"
 dependencies = [
  "quote",
  "syn 3.0.10",
@@ -4195,7 +4195,7 @@ dependencies = [
 
 [[package]]
 name = "goose-cli"
-version = "1.60.0"
+version = "1.59.0"
 dependencies = [
  "agent-client-protocol",
  "anstream",
@@ -4322,7 +4322,7 @@ dependencies = [
 
 [[package]]
 name = "goose-mcp"
-version = "1.60.0"
+version = "1.59.0"
 dependencies = [
  "anyhow",
  "base64 0.23.1",
@@ -4422,7 +4422,7 @@ dependencies = [
 
 [[package]]
 name = "goose-roaming"
-version = "1.60.0"
+version = "1.59.0"
 dependencies = [
  "anyhow",
  "base64 0.23.1",
@@ -4473,7 +4473,7 @@ dependencies = [
 
 [[package]]
 name = "goose-test"
-version = "1.60.0"
+version = "1.59.0"
 dependencies = [
  "clap",
  "serde_json",
@@ -4481,7 +4481,7 @@ dependencies = [
 
 [[package]]
 name = "goose-test-support"
-version = "1.60.0"
+version = "1.59.0"
 dependencies = [
  "axum",
  "env-lock",
@@ -10701,12 +10701,13 @@ dependencies = [
 
 [[package]]
 name = "tree-sitter"
-version = "0.27.2"
+version = "0.26.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "37b2bed8f39a73439f3b0b7ed8f452be5d2911b5e9da69d352ef113bb7448fb8"
+checksum = "17ebdd3a5a7e28a1890b876fdbd0c3c0fe0a6336cffaa104f11b9f720c9daa29"
 dependencies = [
  "cc",
  "regex",
+ "regex-syntax",
  "serde_json",
  "streaming-iterator",
  "tree-sitter-language",
@@ -10754,9 +10755,9 @@ dependencies = [
 
 [[package]]
 name = "tree-sitter-language"
-version = "0.1.9"
+version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d0af592be68c579aa78a16846bd19422978c3c52e438523d45ff5d1bff1f9d4a"
+checksum = "ca0d1bf6fdd806e43ae5198f82f527056d359def39e54e67a0f478ac09dac081"
 
 [[package]]
 name = "tree-sitter-python"
