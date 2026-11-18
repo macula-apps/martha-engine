@@ -6,7 +6,8 @@
 # skipped when the fork's main already holds upstream's main (it has not moved), or while an earlier sync is not done:
 # a branch sync/<sha> on the origin whose <sha> main does not yet hold. A person finishes that one first, so syncs never
 # pile up. Given the name of such a branch, once a person has merged it there, it prints `merged=1` too, and the job
-# checks that branch and opens its pull request. Run from the fork's checkout, with full history and `origin` set.
+# checks that branch and reports it green for a member to open its pull request. Run from the fork's checkout, with
+# full history and `origin` set.
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck source=pins.env

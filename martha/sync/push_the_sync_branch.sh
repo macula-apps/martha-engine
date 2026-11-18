@@ -26,6 +26,6 @@ write workflows:
   git fetch origin ${branch} && git switch ${branch}
   git fetch --no-tags ${UPSTREAM_URL} ${UPSTREAM_BRANCH}
   git merge --no-ff -m "Merge upstream main at ${sha:0:12} into the fork" ${sha} && git push origin ${branch}
-  gh workflow run martha-engine-sync.yml -f resume=${branch}   # checks it and opens the pull request
+  gh workflow run martha-engine-sync.yml -f resume=${branch}   # checks it; when green, a member opens its pull request
 MANUAL
 exit 1
