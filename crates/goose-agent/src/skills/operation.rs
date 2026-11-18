@@ -53,8 +53,11 @@ impl<'a, S> SkillOperation<'a, S> {
     }
 
     /// `false` keeps skills away from the model: no skill list in the prompt, no
-    /// `load_skill` tool, and no answer to a `load_skill` call. The skills the user
-    /// types (`/skills`, `/<skill-name>`) still run, since those are explicit asks.
+    /// `load_skill` tool, and no answer to a `load_skill` call. A `/<skill-name>`
+    /// the user types still runs, since that is an explicit ask; the bare `/skills`
+    /// list is a command and still works. A front end that turns a request into a
+    /// `load_skill` instruction for the model (the CLI's `/skills <names>`) must
+    /// refuse it instead, since the model has no `load_skill` to call.
     pub fn with_advertised(mut self, advertised: bool) -> Self {
         self.advertised = advertised;
         self

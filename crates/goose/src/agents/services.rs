@@ -137,11 +137,15 @@ pub struct TurnSettings {
     pub advertise_skills: bool,
 }
 
+/// The config key (or environment variable) that switches skills off for the model.
+pub const SKILLS_ADVERTISED_SETTING: &str = "GOOSE_SKILLS_ADVERTISED";
+
 /// `GOOSE_SKILLS_ADVERTISED: false` keeps skills away from the model (no list in
-/// the prompt, no `load_skill`); the skills a user types still run. Unset means on.
+/// the prompt, no `load_skill`); a `/<skill-name>` the user types still runs.
+/// Unset means on.
 pub fn skills_advertised(config: &Config) -> bool {
     config
-        .get_param::<bool>("GOOSE_SKILLS_ADVERTISED")
+        .get_param::<bool>(SKILLS_ADVERTISED_SETTING)
         .unwrap_or(true)
 }
 
