@@ -19,20 +19,22 @@ Goose's main branch, not its releases.
    `push_the_sync_branch.sh`; see the known limit below.
 3. **Check**: upstream's own CI (`ci.yml`, dispatched on the branch) and the fork's checks
    (`martha-engine-checks.yml`) run on the sync branch.
-4. **Pull request**: only when both pass, a pull request goes from the sync branch into main. Main moves only when
-   that pull request lands, like every other change to main. A red check stops the job on the branch instead, and
-   `name_the_patch.sh` names the fork's patches among the files the merge changed.
+4. **Pull request**: only when both pass, the job's summary says "sync branch sync/<sha> at <tip> is green; a member
+   opens its PR", with the `gh pr create` line to run. A member opens that pull request from the sync branch into main.
+   Main moves only when it lands, like every other change to main. A red check stops the job on the branch instead,
+   and `name_the_patch.sh` names the fork's patches among the files the merge changed.
 
 **Finishing a stopped sync.** A person merges upstream's commit on the sync branch (resolving the conflict, or
 pushing with a token that may write workflows), pushes the branch, and runs
 `gh workflow run martha-engine-sync.yml -f resume=sync/<sha>`. The job then skips the merge and goes on to the checks
-and the pull request. A branch that does not hold the commit yet is left alone.
+and, when both pass, reports the branch green for a member to open its pull request. A branch that does not hold the commit yet is left alone.
 
 A patch is a commit the fork's main holds that upstream's main does not. Sync merges are not patches.
 
-The job needs one repository setting it does not have today: Actions must be allowed to create pull requests
-(Settings → Actions → General → "Allow GitHub Actions to create and approve pull requests"). A pull request opened
-with `GITHUB_TOKEN` starts no workflow, which is why the job dispatches upstream's CI itself before it opens one.
+The job never opens the pull request itself. The owner decided on 2026-11-18 to keep "Allow GitHub Actions to
+create and approve pull requests" off on the fork, so its token may not create one. A member opens it from the
+summary's line. The pull request then runs the fork's checks again, as every pull request into main does. Upstream's
+CI has already run on the branch: the job dispatches it there itself.
 
 ### Known limit: a change to upstream's workflows
 
@@ -48,14 +50,18 @@ GitHub App's, which is an owner's act and is not part of this package.
 `.github/workflows/martha-engine-checks.yml` runs on every pull request into main and on each sync branch. It builds
 the engine once (`cargo build --locked -p goose-cli --bin <engine> --no-default-features --features
 portable-default`, the build the #541 trial ran; the binary's name is read by S1's `martha/checks/engine_name.sh`)
-and then runs the checks below. A job beside it fails while any workflow other than the fork's own
-(`FORK_WORKFLOWS` in `pins.env`) is active on the repository (`only_the_forks_workflows_are_active.sh`).
+and then runs the checks below. A job beside it fails while any workflow file in that tree other than the fork's own
+(`FORK_WORKFLOWS` in `pins.env`) is active on the repository, or is one GitHub has not registered yet
+(`only_the_forks_workflows_are_active.sh`; its own cases run in the same job).
 
 GitHub registers a workflow file the first time an event triggers it, and registers it as active; a file it has not
-registered cannot be disabled ahead of time (the API answers 404). So an upstream workflow that has never run, or
-that a sync brings in, turns this job red on its first trigger. Red on a new upstream workflow means: disable it under
-the owner's decision that inherited workflows are off (`gh workflow disable <file> -R macula-apps/martha-engine`),
-then re-run the job. The job only reads, so it never turns a workflow off itself.
+registered cannot be disabled ahead of time (the API answers 404). The check reads the workflow files in the checkout,
+not only the states the Actions API lists, so a file that has never run is named by this job before its first trigger,
+with what it triggers on. The owner decided on 2026-11-18 ("(a) Delete as a patch"): an inherited workflow file that
+GitHub has not registered is deleted from the fork's main as a named patch, and `name_the_patch.sh` names the fork's
+patches that touch a conflicted file. A workflow that is registered and active is turned off under the owner's decision
+that inherited workflows are off (`gh workflow disable <file> -R macula-apps/martha-engine`), then the job is re-run.
+The job only reads, so it never changes anything itself.
 
 | Check | What it proves | From |
 |---|---|---|
@@ -85,14 +91,16 @@ measurements on a 4-core box with no GPU, like a hosted runner:
 | Merge | about 2 | a partial clone of the fork (`filter: blob:none`), upstream's main fetched |
 | The fork's checks | about 30, plus up to 10 for each line launched a second time | the first hosted run (pull request 1, 2026-11-17): 30 minutes from start to finish, of which the build about 4, Ollama and the 3 GB model about 2, the nine trial lines 24 |
 | Upstream's CI | about 117, plus about 18 for the job waiting on it | the fork's own dispatched run of `ci.yml` (2026-11-17): 26 jobs, 17 minutes from start to finish |
-| Opening the pull request | under 1 | |
+| Reporting the green branch | under 1 | a member opens the pull request by hand |
 | **One sync with something to merge** | **about 165, about 50 minutes from start to finish** | |
 
 ## Workflows on the fork
 
 Only the fork's own workflows run on it: `martha-engine-sync.yml`, `martha-engine-checks.yml`, and upstream's
 `ci.yml`, which is read-only and is how the sync job runs upstream's tests. Every other upstream workflow is turned
-off before any pull request into the fork's main is opened, and the fork's checks fail while one is active. Each later sync names any workflow it adds, to turn off before it lands.
+off before any pull request into the fork's main is opened, and the fork's checks fail while one is active, or while a
+file GitHub has not registered yet is in the tree. Each later sync names any workflow it adds, so it is turned off, or
+deleted as a patch, before it lands.
 These are the ones that publish or write when main moves, a tag is pushed, or a pull request is opened:
 
 | Workflow | Fires on | What it does |
