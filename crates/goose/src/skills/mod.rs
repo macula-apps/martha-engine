@@ -439,6 +439,19 @@ fn parse_skill_content(
     })
 }
 
+/// The config key (or environment variable) that switches the compiled-in
+/// skills off on their own, while the directory skills stay as they are.
+pub const BUILTIN_SKILLS_ADVERTISED_SETTING: &str = "GOOSE_BUILTIN_SKILLS_ADVERTISED";
+
+/// `GOOSE_BUILTIN_SKILLS_ADVERTISED: false` keeps the compiled-in skills
+/// (`goose-doc-guide`, `web-search`) out of the model while the directory
+/// skills are still discovered. Unset means on.
+pub fn builtin_skills_advertised(config: &Config) -> bool {
+    config
+        .get_param::<bool>(BUILTIN_SKILLS_ADVERTISED_SETTING)
+        .unwrap_or(true)
+}
+
 /// Discover skills from all configured filesystem locations and built-ins.
 /// Each returned entry has `global` set according to the directory it was
 /// found in (or `true` for built-ins).
@@ -458,16 +471,18 @@ fn discover_skills_with_config(working_dir: Option<&Path>, config: &Config) -> V
     let mut sources = goose_agent::skills::discover_skills(roots);
     let mut seen: HashSet<_> = sources.iter().map(|source| source.name.clone()).collect();
 
-    for content in builtin::get_all() {
-        if let Some(source) = parse_skill_content(content, &PathBuf::new(), true, true) {
-            if !seen.contains(&source.name) {
-                seen.insert(source.name.clone());
-                let path = format!("builtin://skills/{}", source.name);
-                sources.push(SourceEntry {
-                    source_type: SourceType::BuiltinSkill,
-                    path,
-                    ..source
-                });
+    if builtin_skills_advertised(config) {
+        for content in builtin::get_all() {
+            if let Some(source) = parse_skill_content(content, &PathBuf::new(), true, true) {
+                if !seen.contains(&source.name) {
+                    seen.insert(source.name.clone());
+                    let path = format!("builtin://skills/{}", source.name);
+                    sources.push(SourceEntry {
+                        source_type: SourceType::BuiltinSkill,
+                        path,
+                        ..source
+                    });
+                }
             }
         }
     }
@@ -637,6 +652,37 @@ mod tests {
 
         assert!(skill.global);
         assert!(skill.writable);
+    }
+
+    #[test]
+    fn builtin_skills_off_leaves_only_the_directory_skills() {
+        let project = tempfile::tempdir().unwrap();
+        let home = tempfile::tempdir().unwrap();
+        let path_root = tempfile::tempdir().unwrap();
+        write_test_skill(
+            &project.path().join(".agents/skills/dir-skill"),
+            "dir-skill",
+            "dir body",
+        );
+
+        let config = Config::new(path_root.path().join("test-config.yaml"), "skills-test").unwrap();
+        config
+            .set_param(BUILTIN_SKILLS_ADVERTISED_SETTING, false)
+            .unwrap();
+        let _guard = env_lock::lock_env([
+            ("GOOSE_PATH_ROOT", path_root.path().to_str()),
+            ("HOME", home.path().to_str()),
+            ("PLUGINS", None),
+        ]);
+
+        let names: Vec<_> = discover_skills_with_config(Some(project.path()), &config)
+            .into_iter()
+            .map(|skill| skill.name)
+            .collect();
+
+        assert!(names.contains(&"dir-skill".to_string()));
+        assert!(!names.contains(&"goose-doc-guide".to_string()));
+        assert!(!names.contains(&"web-search".to_string()));
     }
 
     #[test]
