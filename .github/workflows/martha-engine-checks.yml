@@ -31,8 +31,14 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           ref: ${{ inputs.ref || github.event.pull_request.head.sha }}
-          sparse-checkout: martha/sync
+          # The check reads both the scripts and the workflow files: a workflow file GitHub has not registered yet is
+          # only visible in the tree, so the checkout keeps it (macula-io/martha#616).
+          sparse-checkout: |
+            martha/sync
+            .github/workflows
           persist-credentials: false
+      - name: The check's own cases
+        run: martha/sync/only_the_forks_workflows_are_active_test.sh
       - env:
           GH_TOKEN: ${{ github.token }}
         run: martha/sync/only_the_forks_workflows_are_active.sh "$GITHUB_REPOSITORY"
