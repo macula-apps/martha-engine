@@ -2829,6 +2829,7 @@ mod tests {
 
     #[test]
     fn typed_skills_load_asks_the_model_when_skills_are_on() {
+        let _guard = env_lock::lock_env([(goose::agents::SKILLS_ADVERTISED_SETTING, None::<&str>)]);
         let (_root, config) = config_saying("");
         let names = vec!["coding".to_string(), "insight".to_string()];
 
@@ -2842,6 +2843,7 @@ mod tests {
 
     #[test]
     fn typed_skills_load_is_refused_with_words_when_skills_are_switched_off() {
+        let _guard = env_lock::lock_env([(goose::agents::SKILLS_ADVERTISED_SETTING, None::<&str>)]);
         let (_root, config) = config_saying("GOOSE_SKILLS_ADVERTISED: false\n");
         let names = vec!["coding".to_string()];
 
