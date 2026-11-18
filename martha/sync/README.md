@@ -50,14 +50,18 @@ GitHub App's, which is an owner's act and is not part of this package.
 `.github/workflows/martha-engine-checks.yml` runs on every pull request into main and on each sync branch. It builds
 the engine once (`cargo build --locked -p goose-cli --bin <engine> --no-default-features --features
 portable-default`, the build the #541 trial ran; the binary's name is read by S1's `martha/checks/engine_name.sh`)
-and then runs the checks below. A job beside it fails while any workflow other than the fork's own
-(`FORK_WORKFLOWS` in `pins.env`) is active on the repository (`only_the_forks_workflows_are_active.sh`).
+and then runs the checks below. A job beside it fails while any workflow file in that tree other than the fork's own
+(`FORK_WORKFLOWS` in `pins.env`) is active on the repository, or is one GitHub has not registered yet
+(`only_the_forks_workflows_are_active.sh`; its own cases run in the same job).
 
 GitHub registers a workflow file the first time an event triggers it, and registers it as active; a file it has not
-registered cannot be disabled ahead of time (the API answers 404). So an upstream workflow that has never run, or
-that a sync brings in, turns this job red on its first trigger. Red on a new upstream workflow means: disable it under
-the owner's decision that inherited workflows are off (`gh workflow disable <file> -R macula-apps/martha-engine`),
-then re-run the job. The job only reads, so it never turns a workflow off itself.
+registered cannot be disabled ahead of time (the API answers 404). The check reads the workflow files in the checkout,
+not only the states the Actions API lists, so a file that has never run is named by this job before its first trigger,
+with what it triggers on. The owner decided on 2026-11-18 ("(a) Delete as a patch"): an inherited workflow file that
+GitHub has not registered is deleted from the fork's main as a named patch, and `name_the_patch.sh` names the fork's
+patches that touch a conflicted file. A workflow that is registered and active is turned off under the owner's decision
+that inherited workflows are off (`gh workflow disable <file> -R macula-apps/martha-engine`), then the job is re-run.
+The job only reads, so it never changes anything itself.
 
 | Check | What it proves | From |
 |---|---|---|
@@ -94,7 +98,9 @@ measurements on a 4-core box with no GPU, like a hosted runner:
 
 Only the fork's own workflows run on it: `martha-engine-sync.yml`, `martha-engine-checks.yml`, and upstream's
 `ci.yml`, which is read-only and is how the sync job runs upstream's tests. Every other upstream workflow is turned
-off before any pull request into the fork's main is opened, and the fork's checks fail while one is active. Each later sync names any workflow it adds, to turn off before it lands.
+off before any pull request into the fork's main is opened, and the fork's checks fail while one is active, or while a
+file GitHub has not registered yet is in the tree. Each later sync names any workflow it adds, so it is turned off, or
+deleted as a patch, before it lands.
 These are the ones that publish or write when main moves, a tag is pushed, or a pull request is opened:
 
 | Workflow | Fires on | What it does |
