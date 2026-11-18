@@ -51,7 +51,8 @@ martha-engine is built on [Goose](https://github.com/aaif-goose/goose)
 (Apache-2.0). It is not Goose, and it is not endorsed by the Goose project or
 its maintainers. Every change the fork makes is listed in [NOTICE](NOTICE),
 one commit each. The fork follows Goose's main branch, not its releases: a
-daily job merges it and opens a pull request when the fork's checks pass
+daily job merges it and, when upstream's CI and the fork's checks both pass,
+reports the sync branch green for a member to open the pull request
 ([martha/sync](martha/sync/README.md)). For what the agent itself can do
 (providers, extensions, recipes), read
 [Goose's documentation](https://goose-docs.ai).

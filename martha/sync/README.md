@@ -19,20 +19,22 @@ Goose's main branch, not its releases.
    `push_the_sync_branch.sh`; see the known limit below.
 3. **Check**: upstream's own CI (`ci.yml`, dispatched on the branch) and the fork's checks
    (`martha-engine-checks.yml`) run on the sync branch.
-4. **Pull request**: only when both pass, a pull request goes from the sync branch into main. Main moves only when
-   that pull request lands, like every other change to main. A red check stops the job on the branch instead, and
-   `name_the_patch.sh` names the fork's patches among the files the merge changed.
+4. **Pull request**: only when both pass, the job's summary says "sync branch sync/<sha> at <tip> is green; a member
+   opens its PR", with the `gh pr create` line to run. A member opens that pull request from the sync branch into main.
+   Main moves only when it lands, like every other change to main. A red check stops the job on the branch instead,
+   and `name_the_patch.sh` names the fork's patches among the files the merge changed.
 
 **Finishing a stopped sync.** A person merges upstream's commit on the sync branch (resolving the conflict, or
 pushing with a token that may write workflows), pushes the branch, and runs
 `gh workflow run martha-engine-sync.yml -f resume=sync/<sha>`. The job then skips the merge and goes on to the checks
-and the pull request. A branch that does not hold the commit yet is left alone.
+and, when both pass, reports the branch green for a member to open its pull request. A branch that does not hold the commit yet is left alone.
 
 A patch is a commit the fork's main holds that upstream's main does not. Sync merges are not patches.
 
-The job needs one repository setting it does not have today: Actions must be allowed to create pull requests
-(Settings → Actions → General → "Allow GitHub Actions to create and approve pull requests"). A pull request opened
-with `GITHUB_TOKEN` starts no workflow, which is why the job dispatches upstream's CI itself before it opens one.
+The job never opens the pull request itself. The owner decided on 2026-11-18 to keep "Allow GitHub Actions to
+create and approve pull requests" off on the fork, so its token may not create one. A member opens it from the
+summary's line. The pull request then runs the fork's checks again, as every pull request into main does. Upstream's
+CI has already run on the branch: the job dispatches it there itself.
 
 ### Known limit: a change to upstream's workflows
 
@@ -85,7 +87,7 @@ measurements on a 4-core box with no GPU, like a hosted runner:
 | Merge | about 2 | a partial clone of the fork (`filter: blob:none`), upstream's main fetched |
 | The fork's checks | about 30, plus up to 10 for each line launched a second time | the first hosted run (pull request 1, 2026-11-17): 30 minutes from start to finish, of which the build about 4, Ollama and the 3 GB model about 2, the nine trial lines 24 |
 | Upstream's CI | about 117, plus about 18 for the job waiting on it | the fork's own dispatched run of `ci.yml` (2026-11-17): 26 jobs, 17 minutes from start to finish |
-| Opening the pull request | under 1 | |
+| Reporting the green branch | under 1 | a member opens the pull request by hand |
 | **One sync with something to merge** | **about 165, about 50 minutes from start to finish** | |
 
 ## Workflows on the fork
