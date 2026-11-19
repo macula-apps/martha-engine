@@ -66,6 +66,8 @@ printf 'the name this pins.env gives it\n' > "${evidence}/the-models-own-words.l
 run_check "${elsewhere}/the_evidence_keeps_the_model_log.sh" "${evidence}"
 expect_ok 'the log name is read from pins.env beside the check' 'the evidence keeps the-models-own-words.log'
 rm "${evidence}/the-models-own-words.log"
+# The old name holds a real log here, not the empty one the case above left, so only the name can refuse it.
+printf 'line 1: a request the model answered\n' > "${evidence}/${the_log}"
 run_check "${elsewhere}/the_evidence_keeps_the_model_log.sh" "${evidence}"
 expect_fail 'with the name moved, a log of the old name does not satisfy it' 'the-models-own-words.log'
 
