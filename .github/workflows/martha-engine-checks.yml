@@ -43,6 +43,23 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: martha/sync/only_the_forks_workflows_are_active.sh "$GITHUB_REPOSITORY"
 
+  the-evidence-keeps-the-model-log:
+    # macula-io/martha#822: the artifact is the evidence directory, so this fails by name when the model server's log
+    # is missing from it. Run here, on every pull request and every sync branch, beside the check's own cases.
+    name: The evidence keeps the model server's log
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: ${{ inputs.ref || github.event.pull_request.head.sha }}
+          sparse-checkout: |
+            martha/sync
+            .github/workflows
+          persist-credentials: false
+      - name: The check's own cases
+        run: martha/sync/the_evidence_keeps_the_model_log_test.sh
+
   checks:
     name: Build the engine and run the fork's checks
     runs-on: ubuntu-latest
@@ -94,13 +111,20 @@ jobs:
 
       - name: Serve the trial model
         if: ${{ !cancelled() }}
-        run: engine/martha/sync/serve_the_trial_model.sh "$RUNNER_TEMP/model"
+        # The server's own log lands inside the evidence directory, which is what this run uploads (macula-io/martha#822).
+        run: engine/martha/sync/serve_the_trial_model.sh "$RUNNER_TEMP/model" "$RUNNER_TEMP/trial"
 
       - name: Run the trial lines, recording every DNS query
         if: ${{ !cancelled() }}
         run: |
           engine/martha/sync/watch_for_the_capture_host.sh start "$RUNNER_TEMP/dns.txt"
           engine/martha/sync/run_the_trial_lines.sh "$ENGINE_BIN" engine martha "$RUNNER_TEMP/trial"
+
+      # The evidence is what the run is read from after it ends, so a run whose evidence is incomplete fails here,
+      # by name, rather than uploading an artifact with the log missing.
+      - name: The evidence keeps the model server's log
+        if: ${{ !cancelled() }}
+        run: engine/martha/sync/the_evidence_keeps_the_model_log.sh "$RUNNER_TEMP/trial"
 
       - name: No lookup of PostHog's capture host
         if: ${{ !cancelled() }}
@@ -110,5 +134,7 @@ jobs:
         if: ${{ !cancelled() }}
         with:
           name: trial-evidence
-          path: ${{ runner.temp }}/trial/line-*
+          # The whole evidence directory: every line's result.json and strace, and the model server's log beside them
+          # (macula-io/martha#822). The launches' HOME sits beside it, so nothing but evidence is in here.
+          path: ${{ runner.temp }}/trial
           retention-days: 14

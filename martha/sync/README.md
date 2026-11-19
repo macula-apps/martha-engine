@@ -67,13 +67,18 @@ The job only reads, so it never changes anything itself.
 |---|---|---|
 | `martha/checks/run.sh` | The rebrand is intact (binary, folders, the names users see, licence notices), and telemetry and self-update are compiled out of the binary and the feature lists | S1 |
 | The trial lines (`run_the_trial_lines.sh`) | Lines 1-9 of the #541 trial pass on this engine, run by Martha's own driver at the pinned `MARTHA_SHA` against the pinned local model (`serve_the_trial_model.sh`) | S2 |
+| The evidence keeps the model server's log (`the_evidence_keeps_the_model_log.sh`) | The run's evidence directory holds the model server's own log, so the uploaded `trial-evidence` artifact carries it beside the lines' `proxy.log`; its cases run in their own job | #822 |
 | No capture traffic (`watch_for_the_capture_host.sh`) | While the trial lines run, the runner never looks up PostHog's capture host. The host is read from `crates/goose/src/posthog.rs`. A control lookup must appear in the recording, so a recording that saw nothing fails | S2 |
 
 Each trial launch is stopped at the owner's ten minutes (`TRIAL_MINUTES_PER_LAUNCH`). A line launches once; it
 launches a second time only when the first observed nothing (`not-observed`: the small model made no call the line
 needs, as line 5 did on the first hosted run), and never more than the two launches a check may use
 (`TRIAL_LAUNCHES_PER_LINE`). A `fail` is never launched again. Each launch's `result.json` and strace are kept as the
-run's `trial-evidence` artifact for 14 days; an earlier launch of a line is under `line-<n>-launch-<k>`.
+run's `trial-evidence` artifact for 14 days, and the model server's own log (`TRIAL_SERVER_LOG`) beside them, at the
+artifact's top; an earlier launch of a line is under `line-<n>-launch-<k>`. Without that log a line cut at its cap and
+a request the model never answered read alike: the proxy sees both as silence. The artifact is the evidence directory
+whole, and a run whose evidence holds no log fails by name in `the_evidence_keeps_the_model_log.sh` before it uploads
+(macula-io/martha#822).
 
 Every pinned value (upstream, the Martha commit, the fork's workflows, the Ollama build and its checksum, the model and
 its digest) is in `pins.env`, and only there. The Node line is the one Martha's own CI runs on, read from its
