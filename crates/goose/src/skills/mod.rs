@@ -1,12 +1,10 @@
 //! Everything specific to skills: filesystem discovery (`SKILL.md` walking +
-//! built-ins) and the platform extension (`client` submodule). User-facing
-//! CRUD lives in `crate::sources`, which generalizes across source types.
+//! built-ins) and reading supporting files. User-facing CRUD lives in
+//! `crate::sources`, which generalizes across source types.
 
 mod builtin;
-pub mod client;
 mod supporting_files;
 
-pub use client::{SkillsClient, EXTENSION_NAME};
 pub(crate) use supporting_files::{
     create_source_file, load_supporting_file, read_source_file, write_source_file,
 };
@@ -121,14 +119,23 @@ fn resolve_docs_root_placeholder(skill: &SourceEntry, content: &str, docs_root: 
     content.replace(GOOSE_DOCS_ROOT_PLACEHOLDER, docs_root)
 }
 
-pub fn loaded_skill_context_with_args(skill: &SourceEntry, args: Option<&str>) -> Result<String> {
-    let content = goose_agent::skills::skill_content_with_args(skill, args)?;
+pub fn skills_for_session(working_dir: &Path) -> Result<Vec<SourceEntry>> {
     let docs_root = Config::global()
         .get_goose_docs_root()?
         .unwrap_or_else(|| DEFAULT_GOOSE_DOCS_ROOT.to_string());
-    let content = resolve_docs_root_placeholder(skill, &content, &docs_root);
-
-    Ok(goose_agent::skills::loaded_skill_context(skill, &content))
+    Ok(discover_skills(Some(working_dir))
+        .into_iter()
+        .filter(|skill| {
+            matches!(
+                skill.source_type,
+                SourceType::Skill | SourceType::BuiltinSkill
+            )
+        })
+        .map(|mut skill| {
+            skill.content = resolve_docs_root_placeholder(&skill, &skill.content, &docs_root);
+            skill
+        })
+        .collect())
 }
 
 pub fn skill_argument_hint(skill: &SourceEntry) -> Option<String> {
@@ -432,6 +439,19 @@ fn parse_skill_content(
     })
 }
 
+/// The config key (or environment variable) that switches the compiled-in
+/// skills off on their own, while the directory skills stay as they are.
+pub const BUILTIN_SKILLS_ADVERTISED_SETTING: &str = "GOOSE_BUILTIN_SKILLS_ADVERTISED";
+
+/// `GOOSE_BUILTIN_SKILLS_ADVERTISED: false` keeps the compiled-in skills
+/// (`goose-doc-guide`, `web-search`) out of the model while the directory
+/// skills are still discovered. Unset means on.
+pub fn builtin_skills_advertised(config: &Config) -> bool {
+    config
+        .get_param::<bool>(BUILTIN_SKILLS_ADVERTISED_SETTING)
+        .unwrap_or(true)
+}
+
 /// Discover skills from all configured filesystem locations and built-ins.
 /// Each returned entry has `global` set according to the directory it was
 /// found in (or `true` for built-ins).
@@ -451,16 +471,18 @@ fn discover_skills_with_config(working_dir: Option<&Path>, config: &Config) -> V
     let mut sources = goose_agent::skills::discover_skills(roots);
     let mut seen: HashSet<_> = sources.iter().map(|source| source.name.clone()).collect();
 
-    for content in builtin::get_all() {
-        if let Some(source) = parse_skill_content(content, &PathBuf::new(), true, true) {
-            if !seen.contains(&source.name) {
-                seen.insert(source.name.clone());
-                let path = format!("builtin://skills/{}", source.name);
-                sources.push(SourceEntry {
-                    source_type: SourceType::BuiltinSkill,
-                    path,
-                    ..source
-                });
+    if builtin_skills_advertised(config) {
+        for content in builtin::get_all() {
+            if let Some(source) = parse_skill_content(content, &PathBuf::new(), true, true) {
+                if !seen.contains(&source.name) {
+                    seen.insert(source.name.clone());
+                    let path = format!("builtin://skills/{}", source.name);
+                    sources.push(SourceEntry {
+                        source_type: SourceType::BuiltinSkill,
+                        path,
+                        ..source
+                    });
+                }
             }
         }
     }
@@ -483,7 +505,6 @@ pub fn list_installed_skills(working_dir: Option<&Path>) -> Vec<SourceEntry> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde_json::json;
 
     fn write_test_skill(dir: &Path, name: &str, body: &str) {
         std::fs::create_dir_all(dir).unwrap();
@@ -523,23 +544,6 @@ mod tests {
         assert_path_rejected_by_source_crud(&skill.path, &skill.name, skill_dir);
     }
 
-    fn skill_with_content(content: &str) -> SourceEntry {
-        SourceEntry {
-            source_type: SourceType::Skill,
-            name: "test-skill".to_string(),
-            description: "Test skill".to_string(),
-            content: content.to_string(),
-            path: String::new(),
-            global: false,
-            writable: true,
-            supporting_files: Vec::new(),
-            properties: HashMap::from([(
-                "arguments".to_string(),
-                json!(["component", "from", "to"]),
-            )]),
-        }
-    }
-
     fn builtin_goose_doc_guide_skill() -> SourceEntry {
         SourceEntry {
             source_type: SourceType::BuiltinSkill,
@@ -552,42 +556,6 @@ mod tests {
             supporting_files: Vec::new(),
             properties: HashMap::new(),
         }
-    }
-
-    #[test]
-    fn loaded_skill_context_with_args_replaces_arguments_placeholder_with_raw_args() {
-        let skill = skill_with_content("Review $ARGUMENTS carefully.");
-
-        let rendered = loaded_skill_context_with_args(&skill, Some("src/foo.rs --strict")).unwrap();
-
-        assert!(rendered.contains("Review src/foo.rs --strict carefully."));
-    }
-
-    #[test]
-    fn loaded_skill_context_with_args_uses_context_without_args() {
-        let skill = skill_with_content("Review the code carefully.");
-
-        let rendered = loaded_skill_context_with_args(&skill, None).unwrap();
-
-        assert!(rendered.contains("# Loaded Skill: test-skill (skill)"));
-        assert!(rendered.contains("## Content\n\nReview the code carefully."));
-    }
-
-    #[test]
-    fn loaded_skill_context_shows_resolved_paths_for_supporting_files() {
-        let skill_dir = std::env::temp_dir().join("goose-test-skill");
-        let script_path = skill_dir.join("scripts").join("my-tool.exe");
-        let mut skill = skill_with_content("Run scripts/my-tool.exe.");
-        skill.path = skill_dir.to_string_lossy().into_owned();
-        skill.supporting_files = vec![script_path.to_string_lossy().into_owned()];
-
-        let rendered = loaded_skill_context_with_args(&skill, None).unwrap();
-        let resolved_path = script_path.to_string_lossy().replace('\\', "/");
-
-        assert!(rendered.contains("Relative paths in this skill resolve from the skill directory"));
-        assert!(rendered.contains("scripts/my-tool.exe"));
-        assert!(rendered.contains(&resolved_path));
-        assert!(rendered.contains("load_skill(name: \"test-skill/scripts/my-tool.exe\")"));
     }
 
     #[test]
@@ -684,6 +652,37 @@ mod tests {
 
         assert!(skill.global);
         assert!(skill.writable);
+    }
+
+    #[test]
+    fn builtin_skills_off_leaves_only_the_directory_skills() {
+        let project = tempfile::tempdir().unwrap();
+        let home = tempfile::tempdir().unwrap();
+        let path_root = tempfile::tempdir().unwrap();
+        write_test_skill(
+            &project.path().join(".agents/skills/dir-skill"),
+            "dir-skill",
+            "dir body",
+        );
+
+        let config = Config::new(path_root.path().join("test-config.yaml"), "skills-test").unwrap();
+        config
+            .set_param(BUILTIN_SKILLS_ADVERTISED_SETTING, false)
+            .unwrap();
+        let _guard = env_lock::lock_env([
+            ("GOOSE_PATH_ROOT", path_root.path().to_str()),
+            ("HOME", home.path().to_str()),
+            ("PLUGINS", None),
+        ]);
+
+        let names: Vec<_> = discover_skills_with_config(Some(project.path()), &config)
+            .into_iter()
+            .map(|skill| skill.name)
+            .collect();
+
+        assert!(names.contains(&"dir-skill".to_string()));
+        assert!(!names.contains(&"goose-doc-guide".to_string()));
+        assert!(!names.contains(&"web-search".to_string()));
     }
 
     #[test]

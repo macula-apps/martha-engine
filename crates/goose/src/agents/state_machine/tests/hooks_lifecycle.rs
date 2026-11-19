@@ -770,9 +770,6 @@ async fn load_skill_emits_pre_tool_use_and_result_with_matching_id() -> Result<(
     ]);
     let (pipeline, api) = test_pipeline().await?;
     let pipeline = pipeline.with_hook_manager(env.hook_manager());
-    pipeline
-        .add_extension(crate::skills::EXTENSION_NAME)
-        .await?;
     let arguments = install_skill(pipeline.working_dir());
     api.on("use the skill").call("load_skill", arguments);
     api.on("SKILL_BODY_CONTENT").reply("skill loaded");
@@ -817,9 +814,6 @@ async fn load_skill_emits_post_tool_event() -> Result<()> {
     ]);
     let (pipeline, api) = test_pipeline().await?;
     let pipeline = pipeline.with_hook_manager(env.hook_manager());
-    pipeline
-        .add_extension(crate::skills::EXTENSION_NAME)
-        .await?;
     let arguments = install_skill(pipeline.working_dir());
     api.on("use the skill").call("load_skill", arguments);
     api.on("SKILL_BODY_CONTENT").reply("skill loaded");
@@ -861,9 +855,6 @@ async fn load_skill_denied_by_hook_does_not_execute() -> Result<()> {
     ]);
     let (pipeline, api) = test_pipeline().await?;
     let pipeline = pipeline.with_hook_manager(env.hook_manager());
-    pipeline
-        .add_extension(crate::skills::EXTENSION_NAME)
-        .await?;
     let arguments = install_skill(pipeline.working_dir());
     api.on("use the skill").call("load_skill", arguments);
     api.on("denied by policy hook").reply("understood");

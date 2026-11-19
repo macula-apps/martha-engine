@@ -292,6 +292,12 @@ impl TestPipeline {
         self
     }
 
+    pub(super) fn with_skills_advertised(mut self, advertised: bool) -> Self {
+        assert!(!self.services.initialized());
+        self.turn_settings.advertise_skills = advertised;
+        self
+    }
+
     pub(super) fn with_deferred_tools(mut self) -> Self {
         assert!(!self.services.initialized());
         self.turn_settings.defer_tools = true;
@@ -937,6 +943,7 @@ async fn build_test_pipeline(
             tool_call_cutoff: None,
             auto_effort: None,
             context_relevance: None,
+            advertise_skills: true,
         },
         max_turns: MAX_TURNS,
         session_id: session.id.clone(),
