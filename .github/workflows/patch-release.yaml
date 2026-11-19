@@ -87,18 +87,6 @@ jobs:
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    # Pushes using GITHUB_TOKEN do not trigger push workflows.
-    - name: Build initial release candidate
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        RELEASE_BRANCH: ${{ env.branch_name }}
-        BUILD_SHA: ${{ env.head_ref }}
-      run: |
-        gh workflow run release-branches.yml \
-          --ref main \
-          -f release_branch="$RELEASE_BRANCH" \
-          -f build_sha="$BUILD_SHA"
-
     - name: Post release checklist comment
       run: |
         sed 's/{{VERSION}}/${{ env.version }}/g' RELEASE_CHECKLIST.md > checklist_comment.md
