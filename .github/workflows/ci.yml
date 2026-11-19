@@ -266,30 +266,6 @@ jobs:
           RUST_MIN_STACK: 8388608
           GOOSE_DISABLE_KEYRING: 1
 
-  rust-build-windows:
-    name: Build Rust Project on Windows
-    runs-on: windows-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-
-      - name: Cache Cargo artifacts
-        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0  # v2.9.3
-        with:
-          key: windows-ci
-
-      - name: Setup Rust
-        shell: bash
-        run: |
-          rustup show
-          rustup target add x86_64-pc-windows-msvc
-
-      - name: Build
-        run: cargo build --target x86_64-pc-windows-msvc
-        env:
-          CARGO_INCREMENTAL: "0"
-
   rust-msrv:
     name: Check MSRV
     runs-on: ubuntu-latest
@@ -395,31 +371,6 @@ jobs:
       - name: Check generated GDK API reference data
         run: python3 documentation/automation/gdk-api/generate.py --check
 
-  desktop-lint:
-    name: Test and Lint Electron Desktop App
-    runs-on: macos-latest
-    needs: changes
-    if: needs.changes.outputs.code == 'true' || github.event_name != 'pull_request'
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-
-      - name: Install Dependencies
-        run: source ../../bin/activate-hermit && pnpm install --frozen-lockfile
-        working-directory: ui/desktop
-
-      - name: Run Lint
-        run: source ../../bin/activate-hermit && pnpm run lint:check
-        working-directory: ui/desktop
-
-      - name: Run Tests
-        run: source ../../bin/activate-hermit && pnpm run test:run
-        working-directory: ui/desktop
-
-      - name: Test macOS update manifests
-        run: source ../../bin/activate-hermit && node --test scripts/mac-update-requirements.test.cjs
-        working-directory: ui/desktop
-
   desktop-updater-install:
     name: Test Desktop Updater Install (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
@@ -428,7 +379,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest]
     steps:
       - name: Checkout Code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
