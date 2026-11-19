@@ -106,6 +106,9 @@ Only the fork's own workflows run on it: `martha-engine-sync.yml`, `martha-engin
 off before any pull request into the fork's main is opened, and the fork's checks fail while one is active, or while a
 file GitHub has not registered yet is in the tree. Each later sync names any workflow it adds, so it is turned off, or
 deleted as a patch, before it lands.
+The fork builds for Linux only (macula-io/martha#547, decided 2026-11-19), so one patch deletes upstream's
+`bundle-macos.yml`, `bundle-windows.yml` and `release-branches.yml` and drops the macOS and Windows jobs from the
+rest. A sync whose upstream changes those jobs conflicts, and `name_the_patch.sh` names the patch involved.
 These are the ones that publish or write when main moves, a tag is pushed, or a pull request is opened:
 
 | Workflow | Fires on | What it does |
@@ -116,7 +119,7 @@ These are the ones that publish or write when main moves, a tag is pushed, or a 
 | `deploy-docs-and-extensions.yml` | push to main (documentation/); after other runs | Deploys GitHub Pages |
 | `gdk-release-pr.yml` | push to main (GDK crates, Cargo.lock) | Opens release pull requests |
 | `release.yml` | tags `v1.*`; `release/*` branches | Builds and attests a full release |
-| `release-branches.yml`, `close-release-pr-on-tag.yaml`, `gdk-release.yml` | `release/**` pushes; `v*` and `gdk-v*` tags | Release pull requests; publishes the GDK crates |
+| `close-release-pr-on-tag.yaml`, `gdk-release.yml` | `release/**` pushes; `v*` and `gdk-v*` tags | Release pull requests; publishes the GDK crates |
 | `publish-npm.yml`, `goose-release-notes.yml`, `build-notify.yml` | after other runs | Publish npm packages; post release notes and status to Discord |
 | `docs-update-gdk-api.yml` | a published release | Opens a pull request |
 | `dependabot-auto-merge.yml` | pull_request_target | Merges Dependabot's pull requests into main, which moves main with no review |
@@ -124,7 +127,7 @@ These are the ones that publish or write when main moves, a tag is pushed, or a 
 | `pr-smoke-test.yml` | push to main; pull requests | Runs against model providers with keys the fork does not hold |
 | `mcp-conformance.yml`, `cargo-machete.yml`, `buzz-automation.yml` | push to main or any branch; pull requests | Read-only checks |
 | `minor-release.yaml`, `scorecard.yml`, `stale.yml`, `cargo-deny.yml`, `model-toolcall-conformance.yml`, `update-health-dashboard.yml` | schedules (and push to main for the first two) | Release branches, scorecard upload, closing stale issues. GitHub keeps scheduled workflows off on a fork (`disabled_fork`) until someone turns them on |
-| `build-acp.yml`, `build-cli-linux.yml`, `bundle-macos.yml`, `bundle-windows.yml`, `create-version-bump-pr.yaml`, `maven-sdk.yml`, `python-sdk-wheels.yml`, `patch-release.yaml` | only when called or dispatched | Building blocks of the release workflows |
+| `build-acp.yml`, `build-cli-linux.yml`, `create-version-bump-pr.yaml`, `maven-sdk.yml`, `python-sdk-wheels.yml`, `patch-release.yaml` | only when called or dispatched | Building blocks of the release workflows |
 
 Dependabot's own version updates (`.github/dependabot.yml`) open pull requests on the fork too. They are a
 repository setting, not a workflow.
