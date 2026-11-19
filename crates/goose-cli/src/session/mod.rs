@@ -1233,16 +1233,13 @@ impl CliSession {
     }
 
     async fn handle_load_skills(&mut self, names: &[String]) -> Result<()> {
-        // NOTE: We don't validate the skill names here because the load_skill tool will
-        // handle that and provide feedback to the user if any skill names are invalid.
-        let message = format!(
-            "Use the load_skill tool to load the following skills: {}.",
-            names
-                .iter()
-                .map(|n| format!("\"{}\"", n))
-                .collect::<Vec<_>>()
-                .join(", ")
-        );
+        let message = match load_skills_request(names, Config::global()) {
+            Ok(message) => message,
+            Err(refusal) => {
+                output::render_error(&refusal);
+                return Ok(());
+            }
+        };
         self.push_message(Message::user().with_text(&message));
         output::show_thinking();
         let result = self
@@ -2786,6 +2783,29 @@ fn build_switched_model_config(
         .map_err(|e| anyhow::anyhow!("Failed to create model configuration: {e}"))
 }
 
+/// What `/skills <names>` sends the model, or, with skills switched off
+/// (`GOOSE_SKILLS_ADVERTISED: false`), the words that refuse it: the model is then
+/// offered no `load_skill` to call, so the request could not load anything.
+// NOTE: We don't validate the skill names here because the load_skill tool will
+// handle that and provide feedback to the user if any skill names are invalid.
+fn load_skills_request(names: &[String], config: &Config) -> std::result::Result<String, String> {
+    if !goose::agents::skills_advertised(config) {
+        let example = names.first().map(String::as_str).unwrap_or("skill-name");
+        return Err(format!(
+            "Skills are switched off for the model ({setting} is false), so /skills cannot load them. Run a skill directly with /<skill-name>, for example /{example}.",
+            setting = goose::agents::SKILLS_ADVERTISED_SETTING,
+        ));
+    }
+    Ok(format!(
+        "Use the load_skill tool to load the following skills: {}.",
+        names
+            .iter()
+            .map(|n| format!("\"{}\"", n))
+            .collect::<Vec<_>>()
+            .join(", ")
+    ))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2797,6 +2817,44 @@ mod tests {
     use std::collections::HashMap;
     use std::time::Duration;
     use test_case::test_case;
+
+    fn config_saying(yaml: &str) -> (tempfile::TempDir, Config) {
+        let root = tempfile::tempdir().unwrap();
+        let config_file = root.path().join("config.yaml");
+        std::fs::write(&config_file, yaml).unwrap();
+        let config =
+            Config::new_with_file_secrets(&config_file, root.path().join("secrets.yaml")).unwrap();
+        (root, config)
+    }
+
+    #[test]
+    fn typed_skills_load_asks_the_model_when_skills_are_on() {
+        let _guard = env_lock::lock_env([(goose::agents::SKILLS_ADVERTISED_SETTING, None::<&str>)]);
+        let (_root, config) = config_saying("");
+        let names = vec!["coding".to_string(), "insight".to_string()];
+
+        let message = load_skills_request(&names, &config).expect("skills are on by default");
+
+        assert_eq!(
+            message,
+            "Use the load_skill tool to load the following skills: \"coding\", \"insight\"."
+        );
+    }
+
+    #[test]
+    fn typed_skills_load_is_refused_with_words_when_skills_are_switched_off() {
+        let _guard = env_lock::lock_env([(goose::agents::SKILLS_ADVERTISED_SETTING, None::<&str>)]);
+        let (_root, config) = config_saying("GOOSE_SKILLS_ADVERTISED: false\n");
+        let names = vec!["coding".to_string()];
+
+        let refusal = load_skills_request(&names, &config)
+            .expect_err("skills are switched off, so the model has no load_skill to call");
+
+        assert_eq!(
+            refusal,
+            "Skills are switched off for the model (GOOSE_SKILLS_ADVERTISED is false), so /skills cannot load them. Run a skill directly with /<skill-name>, for example /coding."
+        );
+    }
 
     #[test]
     fn only_headless_terminal_failures_are_propagated() {
@@ -3372,6 +3430,30 @@ mod tests {
 
         release.send(()).unwrap();
         handled.await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn typed_skills_load_sends_nothing_to_the_model_when_skills_are_switched_off() {
+        let _guard =
+            env_lock::lock_env([(goose::agents::SKILLS_ADVERTISED_SETTING, Some("false"))]);
+        let mut session = session_with_loader(None, false).await;
+        let mut editor = session.create_editor().unwrap();
+        let history = HistoryManager::new();
+
+        session
+            .handle_input(
+                InputResult::LoadSkills(vec!["coding".to_string()]),
+                &history,
+                &mut editor,
+                &[],
+            )
+            .await
+            .expect("a refused /skills load is not an error");
+
+        assert!(
+            session.message_history().is_empty(),
+            "skills are switched off, so /skills <name> must send the model nothing"
+        );
     }
 
     #[tokio::test]

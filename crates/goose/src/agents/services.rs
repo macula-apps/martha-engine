@@ -133,6 +133,20 @@ pub struct TurnSettings {
     pub tool_call_cutoff: Option<usize>,
     pub auto_effort: Option<Arc<dyn Operation<Session, GooseEffect>>>,
     pub context_relevance: Option<Arc<dyn goose_providers::decision::DecisionProvider>>,
+    /// Whether the model is offered skills; see `skills_advertised`.
+    pub advertise_skills: bool,
+}
+
+/// The config key (or environment variable) that switches skills off for the model.
+pub const SKILLS_ADVERTISED_SETTING: &str = "GOOSE_SKILLS_ADVERTISED";
+
+/// `GOOSE_SKILLS_ADVERTISED: false` keeps skills away from the model (no list in
+/// the prompt, no `load_skill`); a `/<skill-name>` the user types still runs.
+/// Unset means on.
+pub fn skills_advertised(config: &Config) -> bool {
+    config
+        .get_param::<bool>(SKILLS_ADVERTISED_SETTING)
+        .unwrap_or(true)
 }
 
 impl TurnSettings {
@@ -179,6 +193,7 @@ impl TurnSettings {
             context_relevance: crate::agents::state_machine_builder::context_relevance_provider(
                 config, provider,
             ),
+            advertise_skills: skills_advertised(config),
         }
     }
 }
@@ -946,6 +961,7 @@ impl StateMachineServices {
             extra_operations: settings.auto_effort.into_iter().collect(),
             cancel,
             context_relevance: settings.context_relevance,
+            advertise_skills: settings.advertise_skills,
         })
     }
 
