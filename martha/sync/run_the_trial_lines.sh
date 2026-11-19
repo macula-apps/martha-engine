@@ -6,7 +6,9 @@
 # fork is held to exactly what macula-io/martha#541 proved on Goose. Each launch is stopped at the owner's ten minutes.
 # A line whose launch observed nothing ("not-observed": the small model made no call the line needs) launches again,
 # up to TRIAL_LAUNCHES_PER_LINE; a "fail" is never launched again. Each launch's result.json and strace land under
-# <evidence>/line-<n>, an earlier launch's under <evidence>/line-<n>-launch-<k>.
+# <evidence>/line-<n>, an earlier launch's under <evidence>/line-<n>-launch-<k>. The launches' HOME is a directory
+# beside <evidence>, not inside it, so the evidence directory holds nothing but what the run is read from
+# (macula-io/martha#822): the checks upload it whole, the model server's log among it.
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck source=pins.env
@@ -15,10 +17,11 @@ engine="$(realpath "${1:?usage: run_the_trial_lines.sh <engine> <engine-source> 
 source_dir="$(realpath "${2:?}")"
 driver="$(realpath "${3:?}")/trial_the_goose_host/drive_the_trial.ts"
 evidence="$(realpath -m "${4:?}")"
-mkdir -p "${evidence}/owner-home"
+home="${evidence}-owner-home"
+mkdir -p "${evidence}" "${home}"
 
 launch_the_line() {
-  HOME="${evidence}/owner-home" timeout --kill-after=30s "${TRIAL_MINUTES_PER_LAUNCH}m" \
+  HOME="${home}" timeout --kill-after=30s "${TRIAL_MINUTES_PER_LAUNCH}m" \
     node "${driver}" --goose "${engine}" --goose-source "${source_dir}" --model "${TRIAL_MODEL}" \
     --evidence "${evidence}" --line "$1" >&2 || echo "line $1: the launch ended with status $?" >&2
   local result="${evidence}/line-$1/result.json"
